@@ -25,25 +25,25 @@ module "networking" {
   private_subnets = var.private_subnets
 }
 
-module "iam" {
-  source     = "../../modules/iam"
-  aws_region = var.region
-  cluster_name =  module.eks.cluster_name
-  env_prefix = var.env_prefix
+module "eks" {
+  source           = "../../modules/eks"
+  cluster_name     = var.cluster_name
+  cluster_version  = var.cluster_version
+  vpc_id           = module.networking.vpc_id
+  private_subnets  = module.networking.private_subnets
+  public_subnets   = module.networking.public_subnets
+  node_instance_types = var.node_instance_types
+  env_prefix       = var.env_prefix
 }
 
-module "eks" {
-  source                  = "../../modules/eks"
-  cluster_name            = var.cluster_name
-  cluster_version         = var.cluster_version
-  vpc_id                  = module.networking.vpc_id
-  private_subnets         = module.networking.private_subnets
-  public_subnets          = module.networking.public_subnets
-  eks_role_name           = module.iam.eks_role_arn
-  eks_role_arn            = module.iam.eks_role_arn
-  node_instance_types     = var.node_instance_types
-  env_prefix              = var.env_prefix
+module "iam" {
+  source        = "../../modules/iam"
+  env_prefix    = var.env_prefix
+  eks_role_arn  = module.eks.cluster_iam_role_arn
+  eks_role_name = module.eks.cluster_iam_role_name
 }
+
+
 
 module "rds" {
   source           = "../../modules/rds"

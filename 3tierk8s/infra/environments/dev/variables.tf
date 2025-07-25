@@ -1,11 +1,11 @@
 variable "region" {
   type    = string
-  default = "ap-east-1"
+  default = "ap-south-1"
 }
 
 variable "env_prefix" {
   type    = string
-  default = "dev"
+  default = "3tierk8s-dev"
 }
 
 variable "vpc_cidr" {
@@ -25,12 +25,12 @@ variable "private_subnets" {
 
 variable "cluster_name" {
   type    = string
-  default = "dev-eks"
+  default = "3tier-dev-eks"
 }
 
 variable "cluster_version" {
   type    = string
-  default = "1.27"
+  default = "1.32"
 }
 
 variable "node_instance_types" {
@@ -45,7 +45,7 @@ variable "db_instance_class" {
 
 variable "db_name" {
   type    = string
-  default = "mydb"
+  default = "employeedb"
 }
 
 variable "db_username" {

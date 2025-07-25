@@ -6,8 +6,8 @@ module "eks" {
   vpc_id          = var.vpc_id
   kubernetes_version = var.cluster_version
 
-  iam_role_name = var.eks_role_name
-  iam_role_arn  = var.eks_role_arn
+  # iam_role_name = var.eks_role_name
+  # iam_role_arn  = var.eks_role_arn
 
   endpoint_public_access = false
 
@@ -22,7 +22,7 @@ module "eks" {
 
   tags = { Environment = var.env_prefix }
 
-  authentication_mode = true
+  authentication_mode = "API"
 }
 
 resource "aws_lb" "app" {

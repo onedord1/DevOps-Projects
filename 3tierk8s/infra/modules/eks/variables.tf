@@ -24,15 +24,15 @@ variable "cluster_version" {
   default     = "1.31"
 }
 
-variable "eks_role_name" {
-  description = "Name of the IAM role to associate with the EKS control plane"
-  type        = string
-}
+# variable "eks_role_name" {
+#   description = "Name of the IAM role to associate with the EKS control plane"
+#   type        = string
+# }
 
-variable "eks_role_arn" {
-  description = "ARN of the IAM role to associate with the EKS control plane"
-  type        = string
-}
+# variable "eks_role_arn" {
+#   description = "ARN of the IAM role to associate with the EKS control plane"
+#   type        = string
+# }
 
 variable "node_instance_types" {
   description = "List of EC2 instance types for EKS managed node group"
