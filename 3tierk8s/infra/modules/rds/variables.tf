@@ -1,30 +1,65 @@
-variable "db_name" {
-  description = "Name of the PostgreSQL database"
+variable "identifier" {
+  description = "Identifier for the RDS instance"
   type        = string
 }
 
+variable "engine" {
+  description = "Database engine"
+  type        = string
+  default     = "mysql"
+}
+
+variable "engine_version" {
+  description = "Database engine version"
+  type        = string
+  default     = "8.0"
+}
+
 variable "instance_class" {
-  description = "RDS instance class (e.g., db.t3.micro)"
+  description = "Database instance class"
+  type        = string
+}
+
+variable "allocated_storage" {
+  description = "Allocated storage for the database (in GB)"
+  type        = number
+  default     = 20
+}
+
+variable "db_name" {
+  description = "Database name"
   type        = string
 }
 
 variable "username" {
-  description = "Master username for the database"
+  description = "Database username"
   type        = string
 }
 
 variable "password" {
-  description = "Master password for the database"
+  description = "Database password"
   type        = string
   sensitive   = true
 }
 
-variable "private_subnets" {
-  description = "List of private subnet IDs for RDS"
+variable "subnet_ids" {
+  description = "List of subnet IDs for the RDS instance"
+  type        = list(string)
+  default     = []
+}
+
+variable "subnet_group_name" {
+  description = "Name of the DB subnet group"
+  type        = string
+  default     = ""
+}
+
+variable "vpc_security_group_ids" {
+  description = "List of VPC security group IDs"
   type        = list(string)
 }
 
-variable "db_sg_ids" {
-  description = "List of security group IDs to attach to RDS"
-  type        = list(string)
+variable "environment" {
+  description = "Environment name"
+  type        = string
 }

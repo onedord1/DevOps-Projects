@@ -1,0 +1,21 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: employee-backend-pdb
+  namespace: employee-management-app
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: employee-backend-app
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: employee-frontend-pdb
+  namespace: employee-management-app
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: employee-frontend-app

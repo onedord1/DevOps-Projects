@@ -3,44 +3,48 @@ variable "cluster_name" {
   type        = string
 }
 
-variable "private_subnets" {
-  description = "List of private subnet IDs for EKS worker nodes"
-  type        = list(string)
+variable "cluster_version" {
+  description = "Kubernetes version for the EKS cluster"
+  type        = string
 }
 
-variable "public_subnets" {
-  description = "List of public subnet IDs for external load balancer"
+variable "subnet_ids" {
+  description = "List of subnet IDs for the EKS cluster"
   type        = list(string)
 }
 
 variable "vpc_id" {
-  description = "VPC ID where EKS cluster resides"
+  description = "ID of the VPC"
   type        = string
 }
 
-variable "cluster_version" {
-  description = "EKS Kubernetes version"
+variable "iam_role_arn" {
+  description = "ARN of the IAM role for the EKS cluster"
   type        = string
-  default     = "1.31"
 }
 
-# variable "eks_role_name" {
-#   description = "Name of the IAM role to associate with the EKS control plane"
-#   type        = string
-# }
-
-# variable "eks_role_arn" {
-#   description = "ARN of the IAM role to associate with the EKS control plane"
-#   type        = string
-# }
-
-variable "node_instance_types" {
-  description = "List of EC2 instance types for EKS managed node group"
-  type        = list(string)
-  default     = ["t3.medium"]
+variable "iam_role_name" {
+  description = "Name of the IAM role for the EKS cluster"
+  type        = string
 }
 
-variable "env_prefix" {
-  description = "Environment prefix for tagging"
+variable "eks_node_role_arn" {
+  description = "ARN of the IAM role for the EKS node group"
   type        = string
+}
+
+variable "eks_node_role_name" {
+  description = "Name of the IAM role for the EKS node group"
+  type        = string
+}
+
+variable "environment" {
+  description = "Environment name"
+  type        = string
+}
+
+variable "aws_region" {
+  description = "AWS region"
+  type        = string
+  default     = "ap-south-1"
 }

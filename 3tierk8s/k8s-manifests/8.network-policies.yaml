@@ -1,0 +1,33 @@
+# network-policy.yaml
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: employee-management-netpol
+  namespace: employee-management-app
+spec:
+  podSelector: {}
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: kube-system
+      podSelector:
+        matchLabels:
+          app.kubernetes.io/name: aws-load-balancer-controller
+    - podSelector: {}
+  egress:
+  - to: []
+    ports:
+    - protocol: TCP
+      port: 3306
+  - to: []
+    ports:
+    - protocol: TCP
+      port: 443
+  - to: []
+    ports:
+    - protocol: TCP
+      port: 80

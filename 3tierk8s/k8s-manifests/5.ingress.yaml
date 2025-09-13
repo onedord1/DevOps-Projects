@@ -1,0 +1,55 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: employee-management-ingress
+  namespace: employee-management-app
+  annotations:
+    # ALB Configuration
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/healthcheck-path: /health
+    alb.ingress.kubernetes.io/healthcheck-protocol: HTTP
+    alb.ingress.kubernetes.io/healthcheck-port: traffic-port
+    alb.ingress.kubernetes.io/healthcheck-interval-seconds: "15"
+    alb.ingress.kubernetes.io/healthcheck-timeout-seconds: "5"
+    alb.ingress.kubernetes.io/healthy-threshold-count: "2"
+    alb.ingress.kubernetes.io/unhealthy-threshold-count: "2"
+    alb.ingress.kubernetes.io/success-codes: "200-399"
+    
+    # SSL Configuration
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS": 443}]'
+    alb.ingress.kubernetes.io/ssl-redirect: "true"
+    
+    # WAF Configuration for Rate Limiting
+    alb.ingress.kubernetes.io/wafv2-acl-arn: "YOUR_WAF_ACL_ARN_HERE"
+    
+    # Security Groups
+    alb.ingress.kubernetes.io/security-groups: "YOUR_ALB_SECURITY_GROUP_ID_HERE"
+    
+    # Load Balancer Attributes
+    alb.ingress.kubernetes.io/load-balancer-attributes: access_logs.s3.enabled=true,access_logs.s3.bucket=YOUR_ALB_LOGS_BUCKET_NAME_HERE,access_logs.s3.prefix=employee-management
+    
+    # Ingress Group
+    alb.ingress.kubernetes.io/group.name: employee-management-group
+    
+    # Tags
+    alb.ingress.kubernetes.io/tags: Environment=dev,Application=employee-management
+spec:
+  ingressClassName: alb
+  rules:
+    - http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: employee-frontend-app-service
+                port:
+                  number: 80
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: employee-backend-app-service
+                port:
+                  number: 5000
