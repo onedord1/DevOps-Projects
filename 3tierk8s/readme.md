@@ -13,19 +13,19 @@ The architecture includes:
 
 ## High Level Overview
 Internet
-    ↓
+    →
 AWS Application Load Balancer (ALB)
-    ↓
+    →
 Kubernetes Service (Type: LoadBalancer)
-    ↓
+    →
 Frontend Pods (React App)
-    ↓
+    →
 Kubernetes Service (ClusterIP)
-    ↓
+    →
 Backend Pods (Python API)
-    ↓
+    →
 Kubernetes Service (ClusterIP)
-    ↓
+    →
 RDS MySQL Database
 
 All components are secured with AWS WAF for rate limiting, security groups, and private subnets for isolation.
