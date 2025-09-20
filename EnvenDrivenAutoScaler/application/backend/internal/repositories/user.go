@@ -1,6 +1,8 @@
 package repositories
 
 import (
+	"errors"
+
 	"gorm.io/gorm"
 
 	"expense-tracker/internal/models"
@@ -26,8 +28,14 @@ func (r *UserRepository) FindByID(id uint) (*models.User, error) {
 
 func (r *UserRepository) FindByEmail(email string) (*models.User, error) {
 	var user models.User
-	err := r.db.Where("email = ?", email).First(&user).Error
-	return &user, err
+	result := r.db.Where("email = ?", email).First(&user)
+	if result.Error != nil {
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			return nil, nil // Return nil instead of an error when record not found
+		}
+		return nil, result.Error
+	}
+	return &user, nil
 }
 
 func (r *UserRepository) Update(user *models.User) error {

@@ -24,7 +24,7 @@ type CreateExpenseRequest struct {
     Date        time.Time `json:"date" validate:"required"`
     Description string    `json:"description" validate:"max=500"`
     ReceiptURL  string    `json:"receipt_url"` // String in request, will be converted to pointer
-    Tags        string    `json:"tags"`        // String in request, will be converted to slice
+    Tags        interface{} `json:"tags"`        // Can be string or array of strings
 }
 
 func NewExpenseController(service *services.ExpenseService) *ExpenseController {
@@ -164,13 +164,39 @@ func (ctrl *ExpenseController) convertToServiceRequest(req CreateExpenseRequest)
         receiptURLPtr = &req.ReceiptURL
     }
 
-    // Convert Tags string to slice
+    // Handle Tags - can be string or array of strings
     var tagsSlice []string
-    if req.Tags != "" {
-        tagsSlice = strings.Split(req.Tags, ",")
-        // Trim spaces from each tag
-        for i, tag := range tagsSlice {
-            tagsSlice[i] = strings.TrimSpace(tag)
+    if req.Tags != nil {
+        switch req.Tags.(type) {
+        case string:
+            // If it's a string, split by comma
+            if req.Tags != "" {
+                tagStrs := strings.Split(req.Tags.(string), ",")
+                for _, tagStr := range tagStrs {
+                    trimmedTag := strings.TrimSpace(tagStr)
+                    if trimmedTag != "" {
+                        tagsSlice = append(tagsSlice, trimmedTag)
+                    }
+                }
+            }
+        case []interface{}:
+            // If it's an array of interfaces, convert to strings
+            for _, tagInterface := range req.Tags.([]interface{}) {
+                if tagStr, ok := tagInterface.(string); ok {
+                    trimmedTag := strings.TrimSpace(tagStr)
+                    if trimmedTag != "" {
+                        tagsSlice = append(tagsSlice, trimmedTag)
+                    }
+                }
+            }
+        case []string:
+            // If it's already an array of strings, just trim each element
+            for _, tagStr := range req.Tags.([]string) {
+                trimmedTag := strings.TrimSpace(tagStr)
+                if trimmedTag != "" {
+                    tagsSlice = append(tagsSlice, trimmedTag)
+                }
+            }
         }
     }
 

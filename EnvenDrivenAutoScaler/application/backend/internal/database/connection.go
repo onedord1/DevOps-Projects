@@ -62,6 +62,7 @@ func Connect(cfg *config.Config) (*gorm.DB, error) {
         &models.Transaction{},
         &models.Budget{},
         &models.RecurringExpense{},
+        &models.Tag{},
     )
     if err != nil {
         return nil, fmt.Errorf("failed to run migrations: %w", err)
@@ -78,7 +79,21 @@ func RunMigrations(db *gorm.DB, cfg *config.Config) error {
     }
 
     // Seed default categories
-    return seedDefaultCategories(db, systemUserID)
+    if err := seedDefaultCategories(db, systemUserID); err != nil {
+        return err
+    }
+
+    // Seed default tags
+    if err := seedDefaultTags(db); err != nil {
+        return err
+    }
+
+    // Create join table for transaction-tags many-to-many relationship
+    if err := createTransactionTagsJoinTable(db); err != nil {
+        return err
+    }
+
+    return nil
 }
 
 func createSystemUser(db *gorm.DB) (uint, error) {
@@ -140,5 +155,58 @@ func seedDefaultCategories(db *gorm.DB, systemUserID uint) error {
         }
     }
 
+    return nil
+}
+
+func seedDefaultTags(db *gorm.DB) error {
+    defaultTags := []models.Tag{
+        {Name: "Business", Color: "#10B981"},      // user_id is NULL by default
+        {Name: "Personal", Color: "#3B82F6"},
+        {Name: "Essential", Color: "#EF4444"},
+        {Name: "Recurring", Color: "#06B6D4"},
+        {Name: "Meeting", Color: "#F59E0B"},
+        {Name: "Travel", Color: "#8B5CF6"},
+        {Name: "Food", Color: "#F97316"},
+        {Name: "Transportation", Color: "#14B8A6"},
+        {Name: "Shopping", Color: "#EC4899"},
+        {Name: "Entertainment", Color: "#6366F1"},
+        {Name: "Health", Color: "#84CC16"},
+        {Name: "Education", Color: "#0EA5E9"},
+        {Name: "Work", Color: "#F97316"},
+        {Name: "Home", Color: "#A855F7"},
+        {Name: "Family", Color: "#EF4444"},
+        {Name: "Urgent", Color: "#DC2626"},
+        {Name: "Subscription", Color: "#64748B"},
+        {Name: "Gift", Color: "#F43F5E"},
+        {Name: "Donation", Color: "#0EA5E9"},
+        {Name: "Tax", Color: "#64748B"},
+    }
+
+    for _, tag := range defaultTags {
+        var count int64
+        db.Model(&models.Tag{}).Where("name = ? AND user_id IS NULL", tag.Name).Count(&count)
+        if count == 0 {
+            if err := db.Create(&tag).Error; err != nil {
+                return fmt.Errorf("failed to create tag %s: %w", tag.Name, err)
+            }
+        }
+    }
+
+    return nil
+}
+
+func createTransactionTagsJoinTable(db *gorm.DB) error {
+    // Check if the join table exists
+    if !db.Migrator().HasTable("transaction_tags") {
+        if err := db.Exec(`
+            CREATE TABLE transaction_tags (
+                transaction_id INTEGER REFERENCES transactions(id) ON DELETE CASCADE,
+                tag_id INTEGER REFERENCES tags(id) ON DELETE CASCADE,
+                PRIMARY KEY (transaction_id, tag_id)
+            );
+        `).Error; err != nil {
+            return fmt.Errorf("failed to create transaction_tags join table: %w", err)
+        }
+    }
     return nil
 }

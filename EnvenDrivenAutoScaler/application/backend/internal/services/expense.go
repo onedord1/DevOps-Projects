@@ -2,7 +2,7 @@ package services
 
 import (
     "errors"
-    "strings"
+    "strconv"
     "time"
 
     "expense-tracker/internal/models"
@@ -16,24 +16,26 @@ type CreateExpenseRequest struct {
     Date        time.Time `json:"date" validate:"required"`
     Description string    `json:"description" validate:"max=500"`
     ReceiptURL  *string   `json:"receipt_url"` // Optional receipt URL
-    Tags        []string  `json:"tags"`        // Optional tags
+    Tags        []string  `json:"tags"`        // Optional tag IDs
 }
 
 type ExpenseService struct {
     transactionRepo *repositories.TransactionRepository
     categoryRepo    *repositories.CategoryRepository
+    tagRepo        *repositories.TagRepository // Add this
 }
 
-func NewExpenseService(transactionRepo *repositories.TransactionRepository, categoryRepo *repositories.CategoryRepository) *ExpenseService {
+func NewExpenseService(transactionRepo *repositories.TransactionRepository, categoryRepo *repositories.CategoryRepository, tagRepo *repositories.TagRepository) *ExpenseService {
     return &ExpenseService{
         transactionRepo: transactionRepo,
         categoryRepo:    categoryRepo,
+        tagRepo:        tagRepo,
     }
 }
 
 func (s *ExpenseService) CreateExpense(userID uint, req *CreateExpenseRequest) (*models.Transaction, error) {
     // Verify category belongs to user
-    category, err := s.categoryRepo.FindByID(req.CategoryID, userID)
+    _, err := s.categoryRepo.FindByID(req.CategoryID, userID)
     if err != nil {
         return nil, errors.New("category not found")
     }
@@ -44,9 +46,7 @@ func (s *ExpenseService) CreateExpense(userID uint, req *CreateExpenseRequest) (
         receiptURL = *req.ReceiptURL
     }
 
-    // Convert Tags slice to comma-separated string
-    tagsStr := strings.Join(req.Tags, ",")
-
+    // Create transaction without tags first
     transaction := &models.Transaction{
         UserID:      userID,
         CategoryID:  req.CategoryID,
@@ -55,24 +55,54 @@ func (s *ExpenseService) CreateExpense(userID uint, req *CreateExpenseRequest) (
         Date:        req.Date,
         Description: req.Description,
         ReceiptURL:  receiptURL,
-        Tags:        tagsStr,
     }
 
     if err := s.transactionRepo.Create(transaction); err != nil {
         return nil, err
     }
 
-    transaction.Category = *category
-    return transaction, nil
+    // If there are tag IDs, associate them with the transaction
+    if len(req.Tags) > 0 {
+        // Convert string IDs to uint
+        var tagIDs []uint
+        for _, tagStr := range req.Tags {
+            if tagStr != "" {
+                tagID, err := strconv.ParseUint(tagStr, 10, 32)
+                if err != nil {
+                    return nil, errors.New("invalid tag ID: " + tagStr)
+                }
+                tagIDs = append(tagIDs, uint(tagID))
+            }
+        }
+
+        // Find tags by IDs
+        var tags []models.Tag
+        if err := s.tagRepo.FindByIDs(tagIDs).Error; err != nil {
+            return nil, errors.New("failed to find tags")
+        }
+
+        // Associate tags with transaction
+        if err := s.transactionRepo.AssociateTags(transaction.ID, tags); err != nil {
+            return nil, errors.New("failed to associate tags with transaction")
+        }
+    }
+
+    // Fetch the complete transaction with preloaded relations
+    result, err := s.transactionRepo.FindByIDWithRelations(transaction.ID, userID)
+    if err != nil {
+        return nil, err
+    }
+
+    return result, nil
 }
 
 func (s *ExpenseService) GetExpenses(userID uint, page, limit int, startDate, endDate *time.Time, categoryID *uint) ([]models.Transaction, error) {
     offset := (page - 1) * limit
-    return s.transactionRepo.FindByUserID(userID, limit, offset, startDate, endDate, categoryID)
+    return s.transactionRepo.FindByUserIDWithRelations(userID, limit, offset, startDate, endDate, categoryID)
 }
 
 func (s *ExpenseService) GetExpense(id, userID uint) (*models.Transaction, error) {
-    return s.transactionRepo.FindByID(id, userID)
+    return s.transactionRepo.FindByIDWithRelations(id, userID)
 }
 
 func (s *ExpenseService) UpdateExpense(id, userID uint, req *CreateExpenseRequest) (*models.Transaction, error) {
@@ -95,22 +125,57 @@ func (s *ExpenseService) UpdateExpense(id, userID uint, req *CreateExpenseReques
         receiptURL = *req.ReceiptURL
     }
 
-    // Convert Tags slice to comma-separated string
-    tagsStr := strings.Join(req.Tags, ",")
-
+    // Update transaction fields
     transaction.CategoryID = req.CategoryID
     transaction.Amount = req.Amount
     transaction.Currency = req.Currency
     transaction.Date = req.Date
     transaction.Description = req.Description
     transaction.ReceiptURL = receiptURL
-    transaction.Tags = tagsStr
 
+    // Update transaction
     if err := s.transactionRepo.Update(transaction); err != nil {
         return nil, err
     }
 
-    return s.transactionRepo.FindByID(id, userID)
+    // Update tag associations
+    if len(req.Tags) > 0 {
+        // Convert string IDs to uint
+        var tagIDs []uint
+        for _, tagStr := range req.Tags {
+            if tagStr != "" {
+                tagID, err := strconv.ParseUint(tagStr, 10, 32)
+                if err != nil {
+                    return nil, errors.New("invalid tag ID: " + tagStr)
+                }
+                tagIDs = append(tagIDs, uint(tagID))
+            }
+        }
+
+        // Find tags by IDs
+        var tags []models.Tag
+        if err := s.tagRepo.FindByIDs(tagIDs).Error; err != nil {
+            return nil, errors.New("failed to find tags")
+        }
+
+        // Replace tag associations
+        if err := s.transactionRepo.AssociateTags(transaction.ID, tags); err != nil {
+            return nil, errors.New("failed to associate tags with transaction")
+        }
+    } else {
+        // Clear all tag associations
+        if err := s.transactionRepo.ClearTags(transaction.ID); err != nil {
+            return nil, errors.New("failed to clear tags")
+        }
+    }
+
+    // Fetch the complete transaction with preloaded relations
+    result, err := s.transactionRepo.FindByIDWithRelations(id, userID)
+    if err != nil {
+        return nil, err
+    }
+
+    return result, nil
 }
 
 func (s *ExpenseService) DeleteExpense(id, userID uint) error {

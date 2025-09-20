@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"time"
+	"strings"
 
 	"expense-tracker/internal/config"
 	"expense-tracker/internal/models"
@@ -40,37 +41,44 @@ func NewAuthService(userRepo *repositories.UserRepository, cfg *config.Config) *
 }
 
 func (s *AuthService) SignUp(req *SignupRequest) (*AuthResponse, error) {
-	// Check if user already exists
-	existingUser, _ := s.userRepo.FindByEmail(req.Email)
-	if existingUser != nil {
-		return nil, errors.New("user already exists with this email")
-	}
+    // Check if user already exists
+    existingUser, err := s.userRepo.FindByEmail(req.Email)
+    if err != nil {
+        return nil, err
+    }
+    if existingUser != nil {
+        return nil, errors.New("user already exists with this email")
+    }
 
-	// Create new user
-	user := &models.User{
-		Name:  req.Name,
-		Email: req.Email,
-		Role:  models.RoleBasic,
-	}
+    // Create new user
+    user := &models.User{
+        Name:  req.Name,
+        Email: req.Email,
+        Role:  models.RoleBasic,
+    }
 
-	if err := user.SetPassword(req.Password); err != nil {
-		return nil, err
-	}
+    if err := user.SetPassword(req.Password); err != nil {
+        return nil, err
+    }
 
-	if err := s.userRepo.Create(user); err != nil {
-		return nil, err
-	}
+    if err := s.userRepo.Create(user); err != nil {
+        // Check if it's a duplicate key error
+        if strings.Contains(err.Error(), "duplicate key") || strings.Contains(err.Error(), "unique constraint") {
+            return nil, errors.New("user already exists with this email")
+        }
+        return nil, err
+    }
 
-	// Generate JWT token
-	token, err := utils.GenerateJWT(user.ID, s.config.JWT.Secret, time.Duration(s.config.JWT.ExpiryDays)*24*time.Hour)
-	if err != nil {
-		return nil, err
-	}
+    // Generate JWT token
+    token, err := utils.GenerateJWT(user.ID, s.config.JWT.Secret, time.Duration(s.config.JWT.ExpiryDays)*24*time.Hour)
+    if err != nil {
+        return nil, err
+    }
 
-	return &AuthResponse{
-		Token: token,
-		User:  user,
-	}, nil
+    return &AuthResponse{
+        Token: token,
+        User:  user,
+    }, nil
 }
 
 func (s *AuthService) Login(req *LoginRequest) (*AuthResponse, error) {
