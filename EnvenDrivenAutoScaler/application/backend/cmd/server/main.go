@@ -11,24 +11,46 @@ import (
     "expense-tracker/internal/middleware"
     "expense-tracker/internal/repositories"
     "expense-tracker/internal/services"
+    "expense-tracker/internal/utils"
 )
 
 func main() {
+    // Initialize logger first
+    utils.InitLogger()
+    utils.Info("Starting expense tracker application")
+
     // Load configuration
     cfg, err := config.Load()
     if err != nil {
+        utils.Fatal("Failed to load config", utils.ErrField(err))
         log.Fatal("Failed to load config:", err)
     }
 
     // Connect to database
     db, err := database.Connect(cfg)
     if err != nil {
+        utils.Fatal("Failed to connect to database", utils.ErrField(err))
         log.Fatal("Failed to connect to database:", err)
     }
 
     // Run migrations
     if err := database.RunMigrations(db, cfg); err != nil {
+        utils.Fatal("Failed to run migrations", utils.ErrField(err))
         log.Fatal("Failed to run migrations:", err)
+    }
+
+    // Initialize Elasticsearch service (optional)
+    var elasticsearchService *services.ElasticsearchService
+    if cfg.Elasticsearch.URL != "" {
+        elasticsearchService, err = services.NewElasticsearchService(cfg)
+        if err != nil {
+            utils.Warn("Failed to initialize Elasticsearch service", utils.ErrField(err))
+            // Don't fail the application startup, Elasticsearch is optional
+        } else {
+            utils.Info("Elasticsearch service initialized successfully")
+        }
+    } else {
+        utils.Info("Elasticsearch not configured, skipping initialization")
     }
 
     // Initialize repositories
@@ -40,7 +62,7 @@ func main() {
 
     // Initialize services
     authService := services.NewAuthService(userRepo, cfg)
-    expenseService := services.NewExpenseService(transactionRepo, categoryRepo, tagRepo) // Updated
+    expenseService := services.NewExpenseService(transactionRepo, categoryRepo, tagRepo, elasticsearchService)
     categoryService := services.NewCategoryService(categoryRepo)
     budgetService := services.NewBudgetService(budgetRepo)
     reportService := services.NewReportService(transactionRepo, budgetRepo)
@@ -61,8 +83,9 @@ func main() {
         budgetController, reportController, fileController, tagController)
 
     // Start server
-    log.Printf("Starting server on port %s", cfg.Server.Port)
+    utils.Info("Starting server", utils.String("port", cfg.Server.Port))
     if err := r.Run(":" + cfg.Server.Port); err != nil {
+        utils.Fatal("Failed to start server", utils.ErrField(err))
         log.Fatal("Failed to start server:", err)
     }
 }
@@ -74,6 +97,13 @@ func setupRoutes(cfg *config.Config, authCtrl *controllers.AuthController,
     reportCtrl *controllers.ReportController,
     fileCtrl *controllers.FileController,
     tagCtrl *controllers.TagController) *gin.Engine {
+
+    // Set Gin mode based on environment
+    if cfg.Server.Environment == "production" {
+        gin.SetMode(gin.ReleaseMode)
+    } else {
+        gin.SetMode(gin.DebugMode)
+    }
 
     r := gin.Default()
 
@@ -132,6 +162,15 @@ func setupRoutes(cfg *config.Config, authCtrl *controllers.AuthController,
         protected.POST("/import/csv", fileCtrl.ImportCSV)
         protected.GET("/export/csv", fileCtrl.ExportCSV)
     }
+
+    // Health check endpoint
+    r.GET("/health", func(c *gin.Context) {
+        utils.Info("Health check endpoint called")
+        c.JSON(200, gin.H{
+            "status":  "ok",
+            "message": "Service is healthy",
+        })
+    })
 
     return r
 }

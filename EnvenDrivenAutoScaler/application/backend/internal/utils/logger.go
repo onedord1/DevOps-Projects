@@ -1,91 +1,119 @@
 package utils
 
 import (
-    "fmt"
     "os"
-    "runtime"
-    "strings"
     "time"
+
+    "go.uber.org/zap"
+    "go.uber.org/zap/zapcore"
 )
 
-type LogLevel int
+var Logger *zap.Logger
 
-const (
-    DEBUG LogLevel = iota
-    INFO
-    WARN
-    ERROR
-    FATAL
-)
+// InitLogger initializes the global logger
+func InitLogger() {
+    // Configure encoder for JSON output (Elasticsearch friendly)
+    encoderConfig := zapcore.EncoderConfig{
+        TimeKey:        "time",
+        LevelKey:       "level",
+        NameKey:        "logger",
+        CallerKey:      "caller",
+        FunctionKey:    zapcore.OmitKey,
+        MessageKey:     "msg",
+        StacktraceKey:  "stacktrace",
+        LineEnding:     zapcore.DefaultLineEnding,
+        EncodeLevel:    zapcore.LowercaseLevelEncoder,
+        EncodeTime:     customTimeEncoder,
+        EncodeDuration: zapcore.SecondsDurationEncoder,
+        EncodeCaller:   zapcore.ShortCallerEncoder,
+    }
 
-var logLevelNames = []string{"DEBUG", "INFO", "WARN", "ERROR", "FATAL"}
-
-type Logger struct {
-    level LogLevel
-}
-
-func NewLogger(level string) *Logger {
-    l := &Logger{level: INFO}
-    
-    switch strings.ToUpper(level) {
+    // Set log level based on environment
+    logLevel := zapcore.InfoLevel
+    switch os.Getenv("LOG_LEVEL") {
     case "DEBUG":
-        l.level = DEBUG
+        logLevel = zapcore.DebugLevel
     case "INFO":
-        l.level = INFO
+        logLevel = zapcore.InfoLevel
     case "WARN":
-        l.level = WARN
+        logLevel = zapcore.WarnLevel
     case "ERROR":
-        l.level = ERROR
+        logLevel = zapcore.ErrorLevel
     case "FATAL":
-        l.level = FATAL
+        logLevel = zapcore.FatalLevel
     }
+
+    // Create atomic level
+    atomicLevel := zap.NewAtomicLevel()
+    atomicLevel.SetLevel(logLevel)
+
+    // Create core
+    core := zapcore.NewCore(
+        zapcore.NewJSONEncoder(encoderConfig),
+        zapcore.AddSync(os.Stdout),
+        atomicLevel,
+    )
+
+    // Create logger
+    Logger = zap.New(core, zap.AddCaller(), zap.AddCallerSkip(1))
     
-    return l
+    // Replace global logger
+    zap.ReplaceGlobals(Logger)
 }
 
-func (l *Logger) log(level LogLevel, message string, args ...interface{}) {
-    if level < l.level {
-        return
-    }
-    
-    _, file, line, _ := runtime.Caller(2)
-    fileName := file[strings.LastIndex(file, "/")+1:]
-    
-    timestamp := time.Now().Format("2006-01-02 15:04:05")
-    levelName := logLevelNames[level]
-    
-    logMessage := fmt.Sprintf("[%s] %s %s:%d - %s", 
-        timestamp, levelName, fileName, line, fmt.Sprintf(message, args...))
-    
-    if level >= ERROR {
-        fmt.Fprintln(os.Stderr, logMessage)
-    } else {
-        fmt.Println(logMessage)
-    }
-    
-    if level == FATAL {
-        os.Exit(1)
-    }
+func customTimeEncoder(t time.Time, enc zapcore.PrimitiveArrayEncoder) {
+    enc.AppendString(t.Format("2006-01-02 15:04:05.000"))
 }
 
-func (l *Logger) Debug(message string, args ...interface{}) {
-    l.log(DEBUG, message, args...)
+// Convenience functions for logging
+func Info(message string, fields ...zap.Field) {
+    Logger.Info(message, fields...)
 }
 
-func (l *Logger) Info(message string, args ...interface{}) {
-    l.log(INFO, message, args...)
+func Debug(message string, fields ...zap.Field) {
+    Logger.Debug(message, fields...)
 }
 
-func (l *Logger) Warn(message string, args ...interface{}) {
-    l.log(WARN, message, args...)
+func Warn(message string, fields ...zap.Field) {
+    Logger.Warn(message, fields...)
 }
 
-func (l *Logger) Error(message string, args ...interface{}) {
-    l.log(ERROR, message, args...)
+func Err(message string, fields ...zap.Field) {
+    Logger.Error(message, fields...)
 }
 
-func (l *Logger) Fatal(message string, args ...interface{}) {
-    l.log(FATAL, message, args...)
+func Fatal(message string, fields ...zap.Field) {
+    Logger.Fatal(message, fields...)
 }
 
-var AppLogger = NewLogger(os.Getenv("LOG_LEVEL"))
+// Field helpers for structured logging
+func String(key, val string) zap.Field {
+    return zap.String(key, val)
+}
+
+func Int(key string, val int) zap.Field {
+    return zap.Int(key, val)
+}
+
+func Int64(key string, val int64) zap.Field {
+    return zap.Int64(key, val)
+}
+
+func Float64(key string, val float64) zap.Field {
+    return zap.Float64(key, val)
+}
+
+func Bool(key string, val bool) zap.Field {
+    return zap.Bool(key, val)
+}
+
+func ErrField(err error) zap.Field {
+    return zap.Error(err)
+}
+
+func Any(key string, val interface{}) zap.Field {
+    return zap.Any(key, val)
+}
+
+// Deprecated: Keep for backward compatibility
+var AppLogger = Logger

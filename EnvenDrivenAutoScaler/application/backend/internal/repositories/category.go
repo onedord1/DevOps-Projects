@@ -1,6 +1,8 @@
 package repositories
 
 import (
+	"fmt"
+
 	"gorm.io/gorm"
 
 	"expense-tracker/internal/models"
@@ -19,14 +21,31 @@ func (r *CategoryRepository) Create(category *models.Category) error {
 }
 
 func (r *CategoryRepository) FindByID(id, userID uint) (*models.Category, error) {
-	var category models.Category
-	err := r.db.Where("id = ? AND (user_id = ? OR user_id = 0)", id, userID).First(&category).Error
-	return &category, err
+    var category models.Category
+    
+    // Get system user ID
+    var systemUser models.User
+    r.db.Where("email = ?", "system@expensetracker.local").First(&systemUser)
+    
+    err := r.db.Where("id = ? AND (user_id = ? OR user_id = ?)", id, userID, systemUser.ID).First(&category).Error
+    return &category, err
 }
 
 func (r *CategoryRepository) FindByUserID(userID uint) ([]models.Category, error) {
 	var categories []models.Category
-	err := r.db.Where("user_id = ? OR user_id = 0", userID).Find(&categories).Error
+
+	// Get the system user ID (which should be 1 based on your data)
+	var systemUser models.User
+	r.db.Where("email = ?", "system@expensetracker.local").First(&systemUser)
+
+	// Query for categories that belong to either:
+	// 1. The current user
+	// 2. The system user (default categories)
+	err := r.db.Where("user_id = ? OR user_id = ?", userID, systemUser.ID).Find(&categories).Error
+
+	fmt.Printf("DEBUG: Querying for user ID: %d and system user ID: %d\n", userID, systemUser.ID)
+	fmt.Printf("DEBUG: Found %d categories\n", len(categories))
+
 	return categories, err
 }
 

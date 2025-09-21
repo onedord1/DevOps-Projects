@@ -1,62 +1,42 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Plus, Edit, Trash2, Target, AlertTriangle } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Modal } from '../components/ui/Modal';
 import { formatCurrency } from '../utils/format';
+import { apiService } from '../services/api';
 
 interface Budget {
-  id: string;
-  name: string;
+  id: number;
+  user_id: number;
+  category_id?: number; // null for overall budget
   amount: number;
-  spent: number;
-  categoryId?: string;
-  categoryName?: string;
-  period: 'monthly' | 'yearly';
-  alertThreshold: number;
-  startDate: string;
-  endDate: string;
+  currency: string;
+  period: 'weekly' | 'monthly' | 'yearly';
+  start_date: string;
+  end_date: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+  category?: {
+    id: number;
+    name: string;
+    type: 'expense' | 'income';
+    color: string;
+    icon: string;
+  };
+  
+  // Frontend-specific calculated fields
+  spent?: number; // This will be calculated from transactions
+  name?: string; // This will be derived from category or custom name
+  alertThreshold?: number; // This will be stored separately or calculated
 }
 
-const mockBudgets: Budget[] = [
-  {
-    id: '1',
-    name: 'Monthly Food Budget',
-    amount: 500,
-    spent: 450,
-    categoryName: 'Food & Dining',
-    period: 'monthly',
-    alertThreshold: 80,
-    startDate: '2025-01-01',
-    endDate: '2025-01-31',
-  },
-  {
-    id: '2',
-    name: 'Transportation',
-    amount: 300,
-    spent: 195,
-    categoryName: 'Transportation',
-    period: 'monthly',
-    alertThreshold: 75,
-    startDate: '2025-01-01',
-    endDate: '2025-01-31',
-  },
-  {
-    id: '3',
-    name: 'Entertainment Budget',
-    amount: 200,
-    spent: 175,
-    categoryName: 'Entertainment',
-    period: 'monthly',
-    alertThreshold: 85,
-    startDate: '2025-01-01',
-    endDate: '2025-01-31',
-  },
-];
-
 export const Budgets: React.FC = () => {
-  const [budgets, setBudgets] = useState<Budget[]>(mockBudgets);
+  const [budgets, setBudgets] = useState<Budget[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingBudget, setEditingBudget] = useState<Budget | null>(null);
   const [deleteModal, setDeleteModal] = useState<{ isOpen: boolean; budget: Budget | null }>({
@@ -65,20 +45,58 @@ export const Budgets: React.FC = () => {
   });
 
   const [formData, setFormData] = useState({
-    name: '',
     amount: '',
-    period: 'monthly' as 'monthly' | 'yearly',
-    alertThreshold: '80',
+    currency: 'USD',
+    period: 'monthly' as 'weekly' | 'monthly' | 'yearly',
+    category_id: '' as string | number,
+    start_date: '',
+    end_date: '',
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
 
+  // Fetch budgets on component mount
+  useEffect(() => {
+    fetchBudgets();
+  }, []);
+
+  const fetchBudgets = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const response = await apiService.getBudgets();
+      
+      // Transform backend data to frontend format
+      const transformedBudgets = response.data.map((budget: any) => {
+        // Generate a name from category if not available
+        const name = budget.name || 
+          (budget.category ? `${budget.category.name} Budget` : 'Overall Budget');
+        
+        return {
+          ...budget,
+          name,
+          spent: 0, // Default to 0 until we calculate actual spending
+          alertThreshold: 80, // Default threshold
+        };
+      });
+      
+      setBudgets(transformedBudgets);
+    } catch (err) {
+      setError('Failed to fetch budgets. Please try again.');
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const resetForm = () => {
     setFormData({
-      name: '',
       amount: '',
+      currency: 'USD',
       period: 'monthly',
-      alertThreshold: '80',
+      category_id: '',
+      start_date: '',
+      end_date: '',
     });
     setErrors({});
     setEditingBudget(null);
@@ -88,10 +106,12 @@ export const Budgets: React.FC = () => {
     if (budget) {
       setEditingBudget(budget);
       setFormData({
-        name: budget.name,
         amount: budget.amount.toString(),
+        currency: budget.currency,
         period: budget.period,
-        alertThreshold: budget.alertThreshold.toString(),
+        category_id: budget.category_id?.toString() || '',
+        start_date: budget.start_date.split('T')[0], // Format date for input
+        end_date: budget.end_date.split('T')[0], // Format date for input
       });
     } else {
       resetForm();
@@ -107,89 +127,104 @@ export const Budgets: React.FC = () => {
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
 
-    if (!formData.name.trim()) {
-      newErrors.name = 'Budget name is required';
-    }
-
     if (!formData.amount || parseFloat(formData.amount) <= 0) {
       newErrors.amount = 'Amount must be greater than 0';
     }
 
-    if (!formData.alertThreshold || 
-        parseFloat(formData.alertThreshold) < 0 || 
-        parseFloat(formData.alertThreshold) > 100) {
-      newErrors.alertThreshold = 'Alert threshold must be between 0 and 100';
+    if (!formData.start_date) {
+      newErrors.start_date = 'Start date is required';
+    }
+
+    if (!formData.end_date) {
+      newErrors.end_date = 'End date is required';
     }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!validateForm()) return;
 
-    const currentDate = new Date();
-    const startDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
-    const endDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
-
-    if (editingBudget) {
-      // Update existing budget
-      setBudgets(prev =>
-        prev.map(budget =>
-          budget.id === editingBudget.id
-            ? {
-                ...budget,
-                name: formData.name,
-                amount: parseFloat(formData.amount),
-                period: formData.period,
-                alertThreshold: parseFloat(formData.alertThreshold),
-              }
-            : budget
-        )
-      );
-    } else {
-      // Create new budget
-      const newBudget: Budget = {
-        id: Date.now().toString(),
-        name: formData.name,
+    try {
+      const budgetData = {
         amount: parseFloat(formData.amount),
-        spent: 0,
+        currency: formData.currency,
         period: formData.period,
-        alertThreshold: parseFloat(formData.alertThreshold),
-        startDate: startDate.toISOString().split('T')[0],
-        endDate: endDate.toISOString().split('T')[0],
+        category_id: formData.category_id ? parseInt(formData.category_id as string) : undefined,
+        start_date: new Date(formData.start_date).toISOString(),
+        end_date: new Date(formData.end_date).toISOString(),
       };
-      setBudgets(prev => [...prev, newBudget]);
-    }
 
-    closeModal();
+      if (editingBudget) {
+        // Update existing budget
+        await apiService.updateBudget(editingBudget.id.toString(), budgetData);
+      } else {
+        // Create new budget
+        await apiService.createBudget(budgetData);
+      }
+
+      // Refresh the budgets list
+      await fetchBudgets();
+      closeModal();
+    } catch (err) {
+      console.error('Error saving budget:', err);
+      setError('Failed to save budget. Please try again.');
+    }
   };
 
-  const handleDelete = (budget: Budget) => {
+  const handleDelete = async (budget: Budget) => {
     setDeleteModal({ isOpen: true, budget });
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (deleteModal.budget) {
-      setBudgets(prev => prev.filter(budget => budget.id !== deleteModal.budget!.id));
+      try {
+        await apiService.deleteBudget(deleteModal.budget.id.toString());
+        // Refresh the budgets list
+        await fetchBudgets();
+      } catch (err) {
+        console.error('Error deleting budget:', err);
+        setError('Failed to delete budget. Please try again.');
+      } finally {
+        setDeleteModal({ isOpen: false, budget: null });
+      }
     }
-    setDeleteModal({ isOpen: false, budget: null });
   };
 
   const getBudgetStatus = (budget: Budget) => {
-    const percentage = (budget.spent / budget.amount) * 100;
+    const percentage = ((budget.spent || 0) / budget.amount) * 100;
     const isOverBudget = percentage > 100;
-    const isNearThreshold = percentage >= budget.alertThreshold;
+    const isNearThreshold = percentage >= (budget.alertThreshold || 80);
 
     return {
       percentage: Math.min(percentage, 100),
       isOverBudget,
       isNearThreshold,
-      remaining: budget.amount - budget.spent,
+      remaining: budget.amount - (budget.spent || 0),
     };
   };
+
+  // Render loading state
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+      </div>
+    );
+  }
+
+  // Render error state
+  if (error) {
+    return (
+      <div className="text-center py-12">
+        <div className="text-red-500 mb-4">Error: {error}</div>
+        <Button onClick={fetchBudgets}>Try Again</Button>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -256,7 +291,7 @@ export const Budgets: React.FC = () => {
                 <div className="flex justify-between items-center">
                   <div>
                     <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                      {formatCurrency(budget.spent)}
+                      {formatCurrency(budget.spent || 0)}
                     </p>
                     <p className="text-sm text-gray-600 dark:text-gray-300">
                       of {formatCurrency(budget.amount)} budget
@@ -290,7 +325,7 @@ export const Budgets: React.FC = () => {
                           ? 'text-yellow-600 dark:text-yellow-400'
                           : 'text-green-600 dark:text-green-400'
                     }`}>
-                      {Math.round((budget.spent / budget.amount) * 100)}%
+                      {Math.round(((budget.spent || 0) / budget.amount) * 100)}%
                     </span>
                   </div>
                   <div className="w-full bg-gray-200 rounded-full h-3 dark:bg-gray-700">
@@ -310,7 +345,7 @@ export const Budgets: React.FC = () => {
                 {/* Budget Details */}
                 <div className="flex justify-between text-sm text-gray-600 dark:text-gray-300">
                   <span>Period: {budget.period}</span>
-                  {budget.categoryName && <span>Category: {budget.categoryName}</span>}
+                  {budget.category && <span>Category: {budget.category.name}</span>}
                 </div>
 
                 {/* Alerts */}
@@ -324,7 +359,7 @@ export const Budgets: React.FC = () => {
                 {status.isNearThreshold && !status.isOverBudget && (
                   <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-3">
                     <p className="text-sm text-yellow-800 dark:text-yellow-200">
-                      💡 You're approaching your budget limit ({Math.round((budget.spent / budget.amount) * 100)}%)
+                      💡 You're approaching your budget limit ({Math.round(((budget.spent || 0) / budget.amount) * 100)}%)
                     </p>
                   </div>
                 )}
@@ -360,15 +395,6 @@ export const Budgets: React.FC = () => {
       >
         <form onSubmit={handleSubmit} className="space-y-4">
           <Input
-            label="Budget Name"
-            value={formData.name}
-            onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-            error={errors.name}
-            placeholder="e.g., Monthly Food Budget"
-            required
-          />
-
-          <Input
             label="Budget Amount"
             type="number"
             step="0.01"
@@ -381,30 +407,53 @@ export const Budgets: React.FC = () => {
 
           <div className="space-y-2">
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+              Currency
+            </label>
+            <select
+              value={formData.currency}
+              onChange={(e) => setFormData(prev => ({ ...prev, currency: e.target.value }))}
+              className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
+            >
+              <option value="USD">USD</option>
+              <option value="EUR">EUR</option>
+              <option value="GBP">GBP</option>
+              <option value="JPY">JPY</option>
+            </select>
+          </div>
+
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
               Period
             </label>
             <select
               value={formData.period}
-              onChange={(e) => setFormData(prev => ({ ...prev, period: e.target.value as 'monthly' | 'yearly' }))}
+              onChange={(e) => setFormData(prev => ({ ...prev, period: e.target.value as 'weekly' | 'monthly' | 'yearly' }))}
               className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
             >
+              <option value="weekly">Weekly</option>
               <option value="monthly">Monthly</option>
               <option value="yearly">Yearly</option>
             </select>
           </div>
 
-          <Input
-            label="Alert Threshold (%)"
-            type="number"
-            min="0"
-            max="100"
-            value={formData.alertThreshold}
-            onChange={(e) => setFormData(prev => ({ ...prev, alertThreshold: e.target.value }))}
-            error={errors.alertThreshold}
-            helperText="Get notified when you reach this percentage of your budget"
-            placeholder="80"
-            required
-          />
+          <div className="grid grid-cols-2 gap-4">
+            <Input
+              label="Start Date"
+              type="date"
+              value={formData.start_date}
+              onChange={(e) => setFormData(prev => ({ ...prev, start_date: e.target.value }))}
+              error={errors.start_date}
+              required
+            />
+            <Input
+              label="End Date"
+              type="date"
+              value={formData.end_date}
+              onChange={(e) => setFormData(prev => ({ ...prev, end_date: e.target.value }))}
+              error={errors.end_date}
+              required
+            />
+          </div>
 
           <div className="flex justify-end space-x-2 pt-4">
             <Button type="button" variant="outline" onClick={closeModal}>

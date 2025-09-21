@@ -256,14 +256,14 @@ class ApiService {
     return this.request('/budgets');
   }
 
-  async createBudget(data: Omit<Budget, 'id' | 'userId' | 'createdAt' | 'updatedAt'>): Promise<ApiResponse<Budget>> {
+  async createBudget(data: any): Promise<ApiResponse<Budget>> {
     return this.request('/budgets', {
       method: 'POST',
       body: JSON.stringify(data),
     });
   }
 
-  async updateBudget(id: string, data: Partial<Budget>): Promise<ApiResponse<Budget>> {
+  async updateBudget(id: string, data: any): Promise<ApiResponse<Budget>> {
     return this.request(`/budgets/${id}`, {
       method: 'PUT',
       body: JSON.stringify(data),

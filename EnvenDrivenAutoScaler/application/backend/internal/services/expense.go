@@ -24,14 +24,19 @@ type ExpenseService struct {
 	transactionRepo *repositories.TransactionRepository
 	categoryRepo    *repositories.CategoryRepository
 	tagRepo         *repositories.TagRepository // Add this
+	elasticsearchService *ElasticsearchService
 }
 
-func NewExpenseService(transactionRepo *repositories.TransactionRepository, categoryRepo *repositories.CategoryRepository, tagRepo *repositories.TagRepository) *ExpenseService {
-	return &ExpenseService{
-		transactionRepo: transactionRepo,
-		categoryRepo:    categoryRepo,
-		tagRepo:         tagRepo,
-	}
+func NewExpenseService(transactionRepo *repositories.TransactionRepository, 
+                          categoryRepo *repositories.CategoryRepository, 
+                          tagRepo *repositories.TagRepository,
+                          elasticsearchService *ElasticsearchService) *ExpenseService {
+    return &ExpenseService{
+        transactionRepo:    transactionRepo,
+        categoryRepo:       categoryRepo,
+        tagRepo:            tagRepo,
+        elasticsearchService: elasticsearchService,
+    }
 }
 
 func (s *ExpenseService) CreateExpense(userID uint, req *CreateExpenseRequest) (*models.Transaction, error) {
