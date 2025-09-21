@@ -1,11 +1,14 @@
 package repositories
 
 import (
-    "time"
+	"encoding/json"
+	"fmt"
+	"log"
+	"time"
 
-    "gorm.io/gorm"
+	"gorm.io/gorm"
 
-    "expense-tracker/internal/models"
+	"expense-tracker/internal/models"
 )
 
 type TransactionRepository struct {
@@ -17,6 +20,13 @@ func NewTransactionRepository(db *gorm.DB) *TransactionRepository {
 }
 
 func (r *TransactionRepository) Create(transaction *models.Transaction) error {
+    decodedJSON, err := json.MarshalIndent(transaction, "", "  ")
+    if err != nil {
+        log.Println("Failed to re-encode JSON:", err)
+    } else {
+        fmt.Println("Backend Req. Body: ", string(decodedJSON))
+    }
+    fmt.Println("Creating transaction:", transaction)
     return r.db.Create(transaction).Error
 }
 

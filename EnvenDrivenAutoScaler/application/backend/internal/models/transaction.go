@@ -24,5 +24,5 @@ type Transaction struct {
     User      User              `json:"-" gorm:"foreignKey:UserID"`
     Category  Category          `json:"category" gorm:"foreignKey:CategoryID"`
     Recurring *RecurringExpense `json:"recurring,omitempty" gorm:"foreignKey:RecurringID"`
-    Tags      []Tag             `json:"tags" gorm:"many2many:transaction_tags;"`
+    Tags      []Tag            `json:"tags" gorm:"many2many:transaction_tags;"`
 }
