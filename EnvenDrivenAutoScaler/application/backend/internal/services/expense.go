@@ -16,14 +16,14 @@ type CreateExpenseRequest struct {
 	Currency    string    `json:"currency" validate:"required,len=3"`
 	Date        time.Time `json:"date" validate:"required"`
 	Description string    `json:"description" validate:"max=500"`
-	ReceiptURL  *string   `json:"receipt_url"` // Optional receipt URL
-	Tags        []string  `json:"tags"`        // Optional tag IDs
+	ReceiptURL  *string   `json:"receipt_url"` 
+	Tags        []string  `json:"tags"`        
 }
 
 type ExpenseService struct {
 	transactionRepo *repositories.TransactionRepository
 	categoryRepo    *repositories.CategoryRepository
-	tagRepo         *repositories.TagRepository // Add this
+	tagRepo         *repositories.TagRepository
 	elasticsearchService *ElasticsearchService
 }
 
@@ -40,19 +40,16 @@ func NewExpenseService(transactionRepo *repositories.TransactionRepository,
 }
 
 func (s *ExpenseService) CreateExpense(userID uint, req *CreateExpenseRequest) (*models.Transaction, error) {
-	// Verify category belongs to user
 	_, err := s.categoryRepo.FindByID(req.CategoryID, userID)
 	if err != nil {
 		return nil, errors.New("category not found")
 	}
 
-	// Convert ReceiptURL pointer to string
 	var receiptURL string
 	if req.ReceiptURL != nil {
 		receiptURL = *req.ReceiptURL
 	}
 
-	// Create transaction without tags first
 	transaction := &models.Transaction{
 		UserID:      userID,
 		CategoryID:  req.CategoryID,
@@ -67,9 +64,7 @@ func (s *ExpenseService) CreateExpense(userID uint, req *CreateExpenseRequest) (
 		return nil, err
 	}
 
-	// If there are tag IDs, associate them with the transaction
 	if len(req.Tags) > 0 {
-		// Convert string IDs to uint
 		var tagIDs []uint
 		for _, tagStr := range req.Tags {
 			if tagStr != "" {
@@ -81,21 +76,19 @@ func (s *ExpenseService) CreateExpense(userID uint, req *CreateExpenseRequest) (
 			}
 		}
 
-		// Find tags by IDs
 		var tags []models.Tag
 		if err := s.tagRepo.FindByIDs(tagIDs).Find(&tags).Error; err != nil {
 			return nil, errors.New("failed to find tags")
 		}
 		fmt.Println("tags======================", tags)
 
-		// Associate tags with transaction
 		if err := s.transactionRepo.AssociateTags(transaction.ID, tags); err != nil {
 			fmt.Println("::::::::::::::::::::::")
 			return nil, errors.New("failed to associate tags with transaction")
 		}
 	}
 
-	// Fetch the complete transaction with preloaded relations
+
 	result, err := s.transactionRepo.FindByIDWithRelations(transaction.ID, userID)
 	if err != nil {
 		return nil, err
@@ -119,7 +112,7 @@ func (s *ExpenseService) UpdateExpense(id, userID uint, req *CreateExpenseReques
 		return nil, err
 	}
 
-	// Verify new category belongs to user
+
 	if req.CategoryID != transaction.CategoryID {
 		_, err := s.categoryRepo.FindByID(req.CategoryID, userID)
 		if err != nil {
@@ -127,13 +120,13 @@ func (s *ExpenseService) UpdateExpense(id, userID uint, req *CreateExpenseReques
 		}
 	}
 
-	// Convert ReceiptURL pointer to string
+
 	var receiptURL string
 	if req.ReceiptURL != nil {
 		receiptURL = *req.ReceiptURL
 	}
 
-	// Update transaction fields
+
 	transaction.CategoryID = req.CategoryID
 	transaction.Amount = req.Amount
 	transaction.Currency = req.Currency
@@ -141,14 +134,14 @@ func (s *ExpenseService) UpdateExpense(id, userID uint, req *CreateExpenseReques
 	transaction.Description = req.Description
 	transaction.ReceiptURL = receiptURL
 
-	// Update transaction
+
 	if err := s.transactionRepo.Update(transaction); err != nil {
 		return nil, err
 	}
 
-	// Update tag associations
+
 	if len(req.Tags) > 0 {
-		// Convert string IDs to uint
+
 		var tagIDs []uint
 		for _, tagStr := range req.Tags {
 			if tagStr != "" {
@@ -160,24 +153,24 @@ func (s *ExpenseService) UpdateExpense(id, userID uint, req *CreateExpenseReques
 			}
 		}
 
-		// Find tags by IDs
+
 		var tags []models.Tag
 		if err := s.tagRepo.FindByIDs(tagIDs).Error; err != nil {
 			return nil, errors.New("failed to find tags")
 		}
 
-		// Replace tag associations
+	
 		if err := s.transactionRepo.AssociateTags(transaction.ID, tags); err != nil {
 			return nil, errors.New("failed to associate tags with transaction")
 		}
 	} else {
-		// Clear all tag associations
+
 		if err := s.transactionRepo.ClearTags(transaction.ID); err != nil {
 			return nil, errors.New("failed to clear tags")
 		}
 	}
 
-	// Fetch the complete transaction with preloaded relations
+
 	result, err := s.transactionRepo.FindByIDWithRelations(id, userID)
 	if err != nil {
 		return nil, err

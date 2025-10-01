@@ -19,8 +19,6 @@ type Transaction struct {
     CreatedAt   time.Time      `json:"created_at"`
     UpdatedAt   time.Time      `json:"updated_at"`
     DeletedAt   gorm.DeletedAt `json:"-" gorm:"index"`
-
-    // Relations
     User      User              `json:"-" gorm:"foreignKey:UserID"`
     Category  Category          `json:"category" gorm:"foreignKey:CategoryID"`
     Recurring *RecurringExpense `json:"recurring,omitempty" gorm:"foreignKey:RecurringID"`

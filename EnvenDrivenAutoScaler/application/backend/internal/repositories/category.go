@@ -23,7 +23,7 @@ func (r *CategoryRepository) Create(category *models.Category) error {
 func (r *CategoryRepository) FindByID(id, userID uint) (*models.Category, error) {
     var category models.Category
     
-    // Get system user ID
+  
     var systemUser models.User
     r.db.Where("email = ?", "system@expensetracker.local").First(&systemUser)
     
@@ -34,13 +34,9 @@ func (r *CategoryRepository) FindByID(id, userID uint) (*models.Category, error)
 func (r *CategoryRepository) FindByUserID(userID uint) ([]models.Category, error) {
 	var categories []models.Category
 
-	// Get the system user ID (which should be 1 based on your data)
 	var systemUser models.User
 	r.db.Where("email = ?", "system@expensetracker.local").First(&systemUser)
 
-	// Query for categories that belong to either:
-	// 1. The current user
-	// 2. The system user (default categories)
 	err := r.db.Where("user_id = ? OR user_id = ?", userID, systemUser.ID).Find(&categories).Error
 
 	fmt.Printf("DEBUG: Querying for user ID: %d and system user ID: %d\n", userID, systemUser.ID)

@@ -31,7 +31,6 @@ func (ctrl *HealthController) HealthCheck(c *gin.Context) {
 		Version:   "1.0.0",
 	}
 
-	// Check database connection
 	sqlDB, err := ctrl.db.DB()
 	if err != nil {
 		health.Status = "unhealthy"
@@ -43,10 +42,8 @@ func (ctrl *HealthController) HealthCheck(c *gin.Context) {
 		health.Services["database"] = "healthy"
 	}
 
-	// Check disk space (simplified)
 	health.Services["disk"] = "healthy"
 
-	// Check memory (simplified)
 	health.Services["memory"] = "healthy"
 
 	statusCode := http.StatusOK
@@ -58,7 +55,6 @@ func (ctrl *HealthController) HealthCheck(c *gin.Context) {
 }
 
 func (ctrl *HealthController) ReadinessCheck(c *gin.Context) {
-	// Similar to health check but for readiness probe
 	ctrl.HealthCheck(c)
 }
 

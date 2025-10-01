@@ -1,0 +1,60 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: expense-tracker-be
+  namespace: expense-tracker
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: expense-tracker-be
+  template:
+    metadata:
+      labels:
+        app: expense-tracker-be
+    spec:
+      imagePullSecrets:
+      - name: docker-registry-secret
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1001
+        runAsGroup: 1001
+        fsGroup: 1001   
+      containers:
+      - name: backend
+        image: docker.io/kaderdevops/expense-tracker-be:v1.0
+        ports:
+        - containerPort: 7070       
+        envFrom:
+        - configMapRef:
+            name: backend-config
+        - secretRef:
+            name: backend-secret           
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "1Gi"
+            cpu: "500m"           
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true   
+        volumeMounts:
+        - name: uploads-volume
+          mountPath: /app/uploads 
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 7070
+          initialDelaySeconds: 15
+          periodSeconds: 20
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 7070
+          initialDelaySeconds: 5
+          periodSeconds: 10
+      volumes:
+      - name: uploads-volume
+        emptyDir: {}

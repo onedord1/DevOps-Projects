@@ -8,8 +8,8 @@ import (
 type CreateCategoryRequest struct {
     Name  string `json:"name" validate:"required,min=1,max=100"`
     Type  string `json:"type" validate:"required,oneof=expense income"`
-    Color string `json:"color" validate:"required,min=3,max=7"` // e.g., "#FF5733"
-    Icon  string `json:"icon" validate:"required,min=1,max=50"`  // e.g., "shopping-cart"
+    Color string `json:"color" validate:"required,min=3,max=7"` 
+    Icon  string `json:"icon" validate:"required,min=1,max=50"`
 }
 
 type CategoryService struct {
@@ -25,7 +25,6 @@ func (s *CategoryService) GetCategories(userID uint) ([]models.Category, error) 
 }
 
 func (s *CategoryService) CreateCategory(userID uint, req *CreateCategoryRequest) (*models.Category, error) {
-    // Convert string to models.CategoryType
     categoryType := models.CategoryType(req.Type)
 
     category := &models.Category{
@@ -49,7 +48,6 @@ func (s *CategoryService) UpdateCategory(id, userID uint, req *CreateCategoryReq
         return nil, err
     }
 
-    // Convert string to models.CategoryType
     categoryType := models.CategoryType(req.Type)
 
     category.Name = req.Name

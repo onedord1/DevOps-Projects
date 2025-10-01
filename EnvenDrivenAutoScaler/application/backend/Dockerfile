@@ -1,27 +1,31 @@
-FROM golang:1.23-alpine AS builder
-RUN apk add --no-cache git ca-certificates tzdata gcc musl-dev
-WORKDIR /app
 
+FROM golang:1.25-alpine AS builder
+RUN apk add --no-cache ca-certificates git
+WORKDIR /app
 COPY go.mod go.sum ./
-RUN go mod download && go mod verify
+RUN go mod download
 COPY . .
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
-    -ldflags='-w -s -extldflags "-static"' \
-    -a -installsuffix cgo \
-    -o main cmd/server/main.go \
-    -o healthcheck cmd/healthcheck/main.go
-    
+RUN CGO_ENABLED=0 GOOS=linux go build \
+    -ldflags="-w -s" \
+    -trimpath \
+    -o server ./cmd/server && \
+    CGO_ENABLED=0 GOOS=linux go build \
+    -ldflags="-w -s" \
+    -trimpath \
+    -o healthcheck ./cmd/healthcheck  
 
-FROM scratch
-COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
-COPY --from=builder /usr/share/zoneinfo /usr/share/zoneinfo
-COPY --from=builder /etc/passwd /etc/passwd
+FROM alpine:3.19
+LABEL maintainer="kader.devops@gmail.com"
+LABEL description="production-ready expense-tracker backend."
+RUN apk --no-cache add ca-certificates && \
+    addgroup -g 1001 -S appgroup && \
+    adduser -u 1001 -S appuser -G appgroup
 WORKDIR /app
-COPY --from=builder /app/main .
+COPY --from=builder /app/server .
 COPY --from=builder /app/healthcheck .
-USER nobody
+RUN chown -R appuser:appgroup /app
+USER appuser
 EXPOSE 8080
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+ENTRYPOINT ["./server"]
+HEALTHCHECK --interval=15s --timeout=2s --start-period=5s --retries=3 \
     CMD ["./healthcheck"]
-
-CMD ["./main"]

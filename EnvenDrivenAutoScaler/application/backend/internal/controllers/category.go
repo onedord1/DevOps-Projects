@@ -15,7 +15,6 @@ type CategoryController struct {
 	service *services.CategoryService
 }
 
-// Controller-specific request DTO with validation
 type CreateCategoryRequest struct {
 	Name  string `json:"name" validate:"required,min=2,max=100"`
 	Type  string `json:"type" validate:"required,oneof=expense income"`
@@ -55,7 +54,6 @@ func (ctrl *CategoryController) CreateCategory(c *gin.Context) {
 		return
 	}
 
-	// Convert controller request to service request
 	serviceReq := services.CreateCategoryRequest{
 		Name:  req.Name,
 		Type:  req.Type,
@@ -86,7 +84,6 @@ func (ctrl *CategoryController) UpdateCategory(c *gin.Context) {
 		return
 	}
 
-	// Convert controller request to service request
 	serviceReq := services.CreateCategoryRequest{
 		Name:  req.Name,
 		Type:  req.Type,

@@ -101,7 +101,6 @@ func (r *TransactionRepository) ClearTags(transactionID uint) error {
     return r.db.Model(&transaction).Association("Tags").Clear()
 }
 
-// Add this method for the report service
 func (r *TransactionRepository) GetSummaryByPeriod(userID uint, startDate, endDate time.Time) (map[string]float64, error) {
     type Result struct {
         CategoryName string  `json:"category_name"`
@@ -111,7 +110,6 @@ func (r *TransactionRepository) GetSummaryByPeriod(userID uint, startDate, endDa
     var results []Result
     summary := make(map[string]float64)
 
-    // Query to get total amount by category for the period
     err := r.db.Table("transactions").
         Select("categories.name as category_name, SUM(transactions.amount) as total_amount").
         Joins("JOIN categories ON transactions.category_id = categories.id").
@@ -123,7 +121,6 @@ func (r *TransactionRepository) GetSummaryByPeriod(userID uint, startDate, endDa
         return nil, err
     }
 
-    // Convert results to a map
     for _, result := range results {
         summary[result.CategoryName] = result.TotalAmount
     }

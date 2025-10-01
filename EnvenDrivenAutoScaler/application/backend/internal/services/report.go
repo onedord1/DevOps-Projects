@@ -37,12 +37,11 @@ func (s *ReportService) GetSummary(userID uint, startDate, endDate time.Time) (*
     }
 
     var totalExpenses, totalIncome float64
-    // Fixed: Changed 'category' to blank identifier since it's not used
     for _, amount := range summary {
         if amount > 0 {
             totalIncome += amount
         } else {
-            totalExpenses += -amount // Convert to positive for display
+            totalExpenses += -amount
         }
     }
 
@@ -55,8 +54,6 @@ func (s *ReportService) GetSummary(userID uint, startDate, endDate time.Time) (*
 }
 
 func (s *ReportService) GetTrends(userID uint, period string, months int) ([]TrendData, error) {
-    // Implementation would depend on specific requirements
-    // This is a simplified version
     var trends []TrendData
     now := time.Now()
     
@@ -93,7 +90,7 @@ type BudgetAnalysisData struct {
     SpentAmount     float64 `json:"spent_amount"`
     RemainingAmount float64 `json:"remaining_amount"`
     PercentageUsed  float64 `json:"percentage_used"`
-    Status          string  `json:"status"` // "under", "near", "over"
+    Status          string  `json:"status"`
 }
 
 func (s *ReportService) GetBudgetAnalysis(userID uint) ([]BudgetAnalysisData, error) {
@@ -110,19 +107,16 @@ func (s *ReportService) GetBudgetAnalysis(userID uint) ([]BudgetAnalysisData, er
             continue
         }
 
-        // Calculate spent amount for this budget period
         var spentAmount float64
         if budget.CategoryID != nil {
-            // Category-specific budget
             transactions, _ := s.transactionRepo.FindByUserID(userID, 1000, 0, &budget.StartDate, &budget.EndDate, budget.CategoryID)
             for _, transaction := range transactions {
                 spentAmount += transaction.Amount
             }
         } else {
-            // Overall budget
             summary, _ := s.transactionRepo.GetSummaryByPeriod(userID, budget.StartDate, budget.EndDate)
             for _, amount := range summary {
-                if amount < 0 { // Only count expenses
+                if amount < 0 {
                     spentAmount += -amount
                 }
             }

@@ -14,11 +14,10 @@ type Claims struct {
     jwt.RegisteredClaims
 }
 
-// Add a cache for validated tokens to reduce parsing overhead
 type tokenCache struct {
     sync.RWMutex
-    validTokens map[string]uint // token -> userID
-    expiry      map[string]time.Time // token -> expiry time
+    validTokens map[string]uint 
+    expiry      map[string]time.Time 
 }
 
 var cache = &tokenCache{
@@ -26,7 +25,6 @@ var cache = &tokenCache{
     expiry:      make(map[string]time.Time),
 }
 
-// Clean up expired tokens periodically
 func init() {
     go func() {
         ticker := time.NewTicker(5 * time.Minute)
@@ -60,7 +58,6 @@ func (tc *tokenCache) get(token string) (uint, bool) {
         return 0, false
     }
     
-    // Check if token has expired
     if expiry, ok := tc.expiry[token]; ok && time.Now().After(expiry) {
         delete(tc.validTokens, token)
         delete(tc.expiry, token)
@@ -78,7 +75,6 @@ func (tc *tokenCache) set(token string, userID uint, expiry time.Time) {
     tc.expiry[token] = expiry
 }
 
-// GenerateJWT generates a JWT token with the given user ID and expiration
 func GenerateJWT(userID uint, secret string, expiry time.Duration) (string, error) {
     claims := &Claims{
         UserID: userID,
@@ -92,26 +88,21 @@ func GenerateJWT(userID uint, secret string, expiry time.Duration) (string, erro
     return token.SignedString([]byte(secret))
 }
 
-// ValidateJWT validates a JWT token and returns the user ID
 func ValidateJWT(tokenString, secret string) (uint, error) {
     return ValidateJWTWithContext(context.Background(), tokenString, secret)
 }
 
-// ValidateJWTWithContext validates a JWT token with context timeout and returns the user ID
 func ValidateJWTWithContext(ctx context.Context, tokenString, secret string) (uint, error) {
-    // First check the cache
+    
     if userID, found := cache.get(tokenString); found {
         return userID, nil
     }
 
-    // Create a channel to receive the result
     resultCh := make(chan uint, 1)
     errCh := make(chan error, 1)
 
-    // Parse token in a goroutine to respect context timeout
     go func() {
         token, err := jwt.ParseWithClaims(tokenString, &Claims{}, func(token *jwt.Token) (interface{}, error) {
-            // Validate signing method
             if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
                 return nil, errors.New("unexpected signing method")
             }
@@ -124,7 +115,6 @@ func ValidateJWTWithContext(ctx context.Context, tokenString, secret string) (ui
         }
 
         if claims, ok := token.Claims.(*Claims); ok && token.Valid {
-            // Cache the valid token
             if expiry := claims.ExpiresAt; expiry != nil {
                 cache.set(tokenString, claims.UserID, expiry.Time)
             }
@@ -135,7 +125,6 @@ func ValidateJWTWithContext(ctx context.Context, tokenString, secret string) (ui
         errCh <- jwt.ErrTokenInvalidClaims
     }()
 
-    // Wait for result or context timeout
     select {
     case userID := <-resultCh:
         return userID, nil
@@ -146,13 +135,12 @@ func ValidateJWTWithContext(ctx context.Context, tokenString, secret string) (ui
     }
 }
 
-// ExtractTokenFromHeader extracts JWT token from Authorization header
+
 func ExtractTokenFromHeader(authHeader string) (string, error) {
     if authHeader == "" {
         return "", errors.New("authorization header is required")
     }
 
-    // Check if the header has the Bearer prefix
     const bearerPrefix = "Bearer "
     if len(authHeader) < len(bearerPrefix) || authHeader[:len(bearerPrefix)] != bearerPrefix {
         return "", errors.New("authorization header format must be Bearer {token}")
@@ -161,7 +149,6 @@ func ExtractTokenFromHeader(authHeader string) (string, error) {
     return authHeader[len(bearerPrefix):], nil
 }
 
-// RefreshToken generates a new token with extended expiration if the current token is valid
 func RefreshToken(tokenString, secret string, expiry time.Duration) (string, error) {
     userID, err := ValidateJWT(tokenString, secret)
     if err != nil {

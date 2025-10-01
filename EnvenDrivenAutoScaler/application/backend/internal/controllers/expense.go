@@ -19,15 +19,14 @@ type ExpenseController struct {
 	service *services.ExpenseService
 }
 
-// Controller-specific request DTO with validation
 type CreateExpenseRequest struct {
 	CategoryID  uint        `json:"category_id" validate:"required"`
 	Amount      float64     `json:"amount" validate:"required,gt=0"`
 	Currency    string      `json:"currency" validate:"required,len=3"`
 	Date        time.Time   `json:"date" validate:"required"`
 	Description string      `json:"description" validate:"max=500"`
-	ReceiptURL  string      `json:"receipt_url"` // String in request, will be converted to pointer
-	Tags        interface{} `json:"tags"`        // Can be string or array of strings
+	ReceiptURL  string      `json:"receipt_url"` 
+	Tags        interface{} `json:"tags"`        
 }
 
 func NewExpenseController(service *services.ExpenseService) *ExpenseController {
@@ -54,7 +53,6 @@ func (ctrl *ExpenseController) CreateExpense(c *gin.Context) {
 		return
 	}
 
-	// Convert controller request to service request
 	serviceReq := ctrl.convertToServiceRequest(req)
 
 	expense, err := ctrl.service.CreateExpense(userID, &serviceReq)
@@ -69,7 +67,6 @@ func (ctrl *ExpenseController) CreateExpense(c *gin.Context) {
 func (ctrl *ExpenseController) GetExpenses(c *gin.Context) {
 	userID := c.GetUint("userID")
 
-	// Parse query parameters
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "20"))
 	categoryIDStr := c.Query("category_id")
@@ -136,7 +133,6 @@ func (ctrl *ExpenseController) UpdateExpense(c *gin.Context) {
 		return
 	}
 
-	// Convert controller request to service request
 	serviceReq := ctrl.convertToServiceRequest(req)
 
 	expense, err := ctrl.service.UpdateExpense(uint(id), userID, &serviceReq)
@@ -165,15 +161,12 @@ func (ctrl *ExpenseController) DeleteExpense(c *gin.Context) {
 	c.JSON(http.StatusOK, utils.SuccessResponse("Expense deleted successfully", nil))
 }
 
-// Helper method to convert controller request to service request
 func (ctrl *ExpenseController) convertToServiceRequest(req CreateExpenseRequest) services.CreateExpenseRequest {
-	// Convert ReceiptURL string to pointer
 	var receiptURLPtr *string
 	if req.ReceiptURL != "" {
 		receiptURLPtr = &req.ReceiptURL
 	}
 
-	// Handle Tags - can be string or array of strings
 	var tagsSlice []string
 	if req.Tags != nil {
 		switch req.Tags.(type) {
@@ -189,7 +182,6 @@ func (ctrl *ExpenseController) convertToServiceRequest(req CreateExpenseRequest)
 				}
 			}
 		case []interface{}:
-			// If it's an array of interfaces, convert to strings
 			for _, tagInterface := range req.Tags.([]interface{}) {
 				if tagStr, ok := tagInterface.(string); ok {
 					trimmedTag := strings.TrimSpace(tagStr)
@@ -199,7 +191,7 @@ func (ctrl *ExpenseController) convertToServiceRequest(req CreateExpenseRequest)
 				}
 			}
 		case []string:
-			// If it's already an array of strings, just trim each element
+			
 			for _, tagStr := range req.Tags.([]string) {
 				trimmedTag := strings.TrimSpace(tagStr)
 				if trimmedTag != "" {

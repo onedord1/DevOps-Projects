@@ -19,8 +19,6 @@ type Budget struct {
 	CreatedAt  time.Time      `json:"created_at"`
 	UpdatedAt  time.Time      `json:"updated_at"`
 	DeletedAt  gorm.DeletedAt `json:"-" gorm:"index"`
-
-	// Relations
 	User     User      `json:"-"`
 	Category *Category `json:"category,omitempty"`
 }

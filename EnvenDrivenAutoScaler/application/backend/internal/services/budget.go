@@ -8,12 +8,12 @@ import (
 )
 
 type CreateBudgetRequest struct {
-    CategoryID *uint     `json:"category_id"` // Pointer to allow nil values (for overall budget)
+    CategoryID *uint     `json:"category_id"` 
     Amount     float64   `json:"amount"`
     Currency   string    `json:"currency"`
-    Period     string    `json:"period"`      // "weekly", "monthly", "yearly"
+    Period     string    `json:"period"`    
     StartDate  time.Time `json:"start_date"`
-    EndDate    *time.Time `json:"end_date"`   // Optional end date
+    EndDate    *time.Time `json:"end_date"` 
 }
 
 type BudgetService struct {
@@ -29,10 +29,10 @@ func (s *BudgetService) GetBudgets(userID uint) ([]models.Budget, error) {
 }
 
 func (s *BudgetService) CreateBudget(userID uint, req *CreateBudgetRequest) (*models.Budget, error) {
-    // Convert string period to models.BudgetPeriod
+    
     period := models.BudgetPeriod(req.Period)
     
-    // Convert pointer EndDate to value (handle nil case)
+    
     var endDate time.Time
     if req.EndDate != nil {
         endDate = *req.EndDate
@@ -62,10 +62,10 @@ func (s *BudgetService) UpdateBudget(id, userID uint, req *CreateBudgetRequest) 
         return nil, err
     }
 
-    // Convert string period to models.BudgetPeriod
+    
     period := models.BudgetPeriod(req.Period)
     
-    // Convert pointer EndDate to value (handle nil case)
+    
     var endDate time.Time
     if req.EndDate != nil {
         endDate = *req.EndDate

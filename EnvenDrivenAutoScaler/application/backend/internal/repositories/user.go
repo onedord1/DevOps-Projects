@@ -31,7 +31,7 @@ func (r *UserRepository) FindByEmail(email string) (*models.User, error) {
 	result := r.db.Where("email = ?", email).First(&user)
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return nil, nil // Return nil instead of an error when record not found
+			return nil, nil 
 		}
 		return nil, result.Error
 	}

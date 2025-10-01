@@ -1,0 +1,30 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: expense-tracker-ingress
+  namespace: expense-tracker
+  annotations:
+    nginx.ingress.kubernetes.io/enable-cors: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: "8m"
+    nginx.ingress.kubernetes.io/use-regex: "true"
+    #nginx.ingress.kubernetes.io/rewrite-target: /$1
+spec:
+  ingressClassName: nginx-expense-tracker
+  rules:
+  - http:
+      paths:
+      - backend:
+          service:
+            name: expense-tracker-be-service
+            port:
+              number: 80
+        path: /api/?(.*)
+        pathType: ImplementationSpecific
+      - backend:
+          service:
+            name: expense-tracker-fe-service
+            port:
+              number: 80
+        # This regex matches any path.
+        path: /.*
+        pathType: ImplementationSpecific

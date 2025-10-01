@@ -16,14 +16,13 @@ type BudgetController struct {
 	service *services.BudgetService
 }
 
-// Controller-specific request DTO with validation
 type CreateBudgetRequest struct {
-	CategoryID *uint      `json:"category_id" validate:"omitempty"` // Optional for overall budget
+	CategoryID *uint      `json:"category_id" validate:"omitempty"`
 	Amount     float64    `json:"amount" validate:"required,gt=0"`
 	Currency   string     `json:"currency" validate:"required"`
 	Period     string     `json:"period" validate:"required,oneof=weekly monthly yearly"`
 	StartDate  time.Time  `json:"start_date" validate:"required"`
-	EndDate    *time.Time `json:"end_date" validate:"omitempty"` // Optional end date
+	EndDate    *time.Time `json:"end_date" validate:"omitempty"`
 }
 
 func NewBudgetController(service *services.BudgetService) *BudgetController {
@@ -33,7 +32,6 @@ func NewBudgetController(service *services.BudgetService) *BudgetController {
 func (ctrl *BudgetController) GetBudgets(c *gin.Context) {
 	userID := c.GetUint("userID")
 
-	// Add this for debugging
 	fmt.Printf("DEBUG: Budgets - User ID from JWT token: %d\n", userID)
 
 	budgets, err := ctrl.service.GetBudgets(userID)
@@ -61,7 +59,6 @@ func (ctrl *BudgetController) CreateBudget(c *gin.Context) {
 		return
 	}
 
-	// Convert controller request to service request
 	serviceReq := services.CreateBudgetRequest{
 		CategoryID: req.CategoryID,
 		Amount:     req.Amount,
@@ -93,8 +90,6 @@ func (ctrl *BudgetController) UpdateBudget(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, utils.ErrorResponse(err.Error()))
 		return
 	}
-
-	// Convert controller request to service request
 	serviceReq := services.CreateBudgetRequest{
 		CategoryID: req.CategoryID,
 		Amount:     req.Amount,

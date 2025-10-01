@@ -1,0 +1,44 @@
+# backend-configmap.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: backend-config
+  namespace: expense-tracker
+data:
+  DB_DRIVER: "postgres"
+  DB_HOST: "postgres-service"
+  DB_PORT: "5432"
+  DB_USERNAME: "applicationuser"
+  DB_NAME: "expense_tracker"
+  DB_SSL_MODE: "disable"
+  DB_MAX_OPEN_CONNS: "100"
+  DB_MAX_IDLE_CONNS: "25"
+  DB_CONN_MAX_LIFETIME: "5m"
+  DB_CONN_MAX_IDLE_TIME: "1m"
+  JWT_EXPIRY_DAYS: "7"
+  PORT: "7070"
+  ENVIRONMENT: "production"
+  LOG_LEVEL: "INFO"
+  READ_TIMEOUT: "5s"
+  WRITE_TIMEOUT: "10s"
+  IDLE_TIMEOUT: "120s"
+  GOMAXPROCS: "0"
+  GOGC: "100"
+  GOMEMLIMIT: "1073741824" # 1 GiB
+  ENABLE_PROFILING: "false"
+  UPLOAD_DIR: "/app/uploads"
+  MAX_FILE_SIZE: "10485760"
+  STORAGE_TYPE: "local"
+  SMTP_HOST: "smtp.gmail.com"
+  SMTP_PORT: "587"
+  SMTP_USERNAME: "your-email@gmail.com"
+  FROM_EMAIL: "your-email@gmail.com"
+  REDIS_HOST: "localhost" 
+  REDIS_PORT: "6379"
+  REDIS_DB: "0"
+  REDIS_POOL_SIZE: "50"
+  
+  # ELASTICSEARCH_URL: "http://elasticsearch-service:9200"
+  ELASTICSEARCH_URL: "http://localhost:9200"
+  ELASTICSEARCH_USERNAME: ""
+  ELASTICSEARCH_INDEX: "expenses"

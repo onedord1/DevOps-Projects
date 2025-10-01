@@ -1,0 +1,27 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    nginx.ingress.kubernetes.io/enable-cors: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: 8m
+  name: expense-tracker-ingress
+  namespace: expense-tracker
+spec:
+  ingressClassName: nginx-expense-tracker
+  rules:
+  - http:
+      paths:
+      - backend:
+          service:
+            name: expense-tracker-be-service
+            port:
+              number: 7070
+        path: /api/
+        pathType: Prefix
+      - backend:
+          service:
+            name: expense-tracker-fe-service
+            port:
+              number: 80
+        path: /
+        pathType: Prefix

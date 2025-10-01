@@ -68,10 +68,10 @@ type ElasticsearchConfig struct {
 }
 
 type PerformanceConfig struct {
-    GOMAXPROCS     int
-    GOGC           int
-    GOMEMLIMIT     int64
-    EnableProfiling bool
+    GOMAXPROCS      int   `mapstructure:"gomaxprocs"`
+    GOMEMLIMIT      int64 `mapstructure:"gomemlimit"`
+    GOGC            int   `mapstructure:"gogc"`
+    EnableProfiling bool  `mapstructure:"enable_profiling"`
 }
 
 func Load() (*Config, error) {

@@ -41,7 +41,6 @@ func NewAuthService(userRepo *repositories.UserRepository, cfg *config.Config) *
 }
 
 func (s *AuthService) SignUp(req *SignupRequest) (*AuthResponse, error) {
-    // Check if user already exists
     existingUser, err := s.userRepo.FindByEmail(req.Email)
     if err != nil {
         return nil, err
@@ -50,7 +49,6 @@ func (s *AuthService) SignUp(req *SignupRequest) (*AuthResponse, error) {
         return nil, errors.New("user already exists with this email")
     }
 
-    // Create new user
     user := &models.User{
         Name:  req.Name,
         Email: req.Email,
@@ -62,14 +60,12 @@ func (s *AuthService) SignUp(req *SignupRequest) (*AuthResponse, error) {
     }
 
     if err := s.userRepo.Create(user); err != nil {
-        // Check if it's a duplicate key error
         if strings.Contains(err.Error(), "duplicate key") || strings.Contains(err.Error(), "unique constraint") {
             return nil, errors.New("user already exists with this email")
         }
         return nil, err
     }
 
-    // Generate JWT token
     token, err := utils.GenerateJWT(user.ID, s.config.JWT.Secret, time.Duration(s.config.JWT.ExpiryDays)*24*time.Hour)
     if err != nil {
         return nil, err
@@ -91,7 +87,6 @@ func (s *AuthService) Login(req *LoginRequest) (*AuthResponse, error) {
 		return nil, errors.New("invalid credentials")
 	}
 
-	// Generate JWT token
 	token, err := utils.GenerateJWT(user.ID, s.config.JWT.Secret, time.Duration(s.config.JWT.ExpiryDays)*24*time.Hour)
 	if err != nil {
 		return nil, err
@@ -118,7 +113,6 @@ func (s *AuthService) UpdateProfile(userID uint, req *UpdateProfileRequest) (*mo
 		return nil, err
 	}
 
-	// Check if email is already taken by another user
 	if user.Email != req.Email {
 		existingUser, _ := s.userRepo.FindByEmail(req.Email)
 		if existingUser != nil && existingUser.ID != userID {
@@ -139,18 +133,14 @@ func (s *AuthService) UpdateProfile(userID uint, req *UpdateProfileRequest) (*mo
 func (s *AuthService) ForgotPassword(email string) error {
 	user, err := s.userRepo.FindByEmail(email)
 	if err != nil {
-		// Don't reveal if email exists or not
 		return nil
 	}
 
-	// Generate reset token (in real implementation, store this in database)
 	resetToken, err := utils.GenerateJWT(user.ID, s.config.JWT.Secret, time.Hour)
 	if err != nil {
 		return err
 	}
 
-	// Send email with reset link (implement email service)
-	// This is a placeholder - you'd integrate with your email service
 	fmt.Printf("Reset token for user %d: %s\n", user.ID, resetToken)
 	return nil
 }

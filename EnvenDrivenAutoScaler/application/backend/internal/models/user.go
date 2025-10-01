@@ -16,8 +16,6 @@ type User struct {
 	CreatedAt    time.Time      `json:"created_at"`
 	UpdatedAt    time.Time      `json:"updated_at"`
 	DeletedAt    gorm.DeletedAt `json:"-" gorm:"index"`
-
-	// Relations
 	Categories   []Category    `json:"categories,omitempty"`
 	Transactions []Transaction `json:"transactions,omitempty"`
 	Budgets      []Budget      `json:"budgets,omitempty"`

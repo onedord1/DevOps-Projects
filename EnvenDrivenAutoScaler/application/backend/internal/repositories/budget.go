@@ -29,11 +29,11 @@ func (r *BudgetRepository) FindByID(id, userID uint) (*models.Budget, error) {
 func (r *BudgetRepository) FindByUserID(userID uint) ([]models.Budget, error) {
 	var budgets []models.Budget
 
-	// Get the system user ID for default budgets
+	
 	var systemUser models.User
 	r.db.Where("email = ?", "system@expensetracker.local").First(&systemUser)
 
-	// Query for budgets that belong to either the current user or the system user
+	
 	err := r.db.Preload("Category").Where("user_id = ? OR user_id = ?", userID, systemUser.ID).Find(&budgets).Error
 
 	fmt.Printf("DEBUG: Querying budgets for user ID: %d and system user ID: %d\n", userID, systemUser.ID)

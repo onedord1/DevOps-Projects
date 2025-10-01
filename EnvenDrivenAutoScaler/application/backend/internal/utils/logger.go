@@ -12,7 +12,6 @@ import (
 
 var Logger *zap.Logger
 
-// BufferPool for reducing allocations in logging
 type BufferPool struct {
     pool sync.Pool
 }
@@ -32,15 +31,13 @@ func (bp *BufferPool) Get() *bytes.Buffer {
 }
 
 func (bp *BufferPool) Put(buf *bytes.Buffer) {
-    if buf.Len() < 1024 { // Only reuse small buffers
+    if buf.Len() < 1024 { 
         buf.Reset()
         bp.pool.Put(buf)
     }
 }
 
-// InitLogger initializes the global logger
 func InitLogger() {
-    // Configure encoder for JSON output (Elasticsearch friendly)
     encoderConfig := zapcore.EncoderConfig{
         TimeKey:        "time",
         LevelKey:       "level",
@@ -71,21 +68,19 @@ func InitLogger() {
         logLevel = zapcore.FatalLevel
     }
 
-    // Create atomic level
     atomicLevel := zap.NewAtomicLevel()
     atomicLevel.SetLevel(logLevel)
 
-    // Create core with buffered writer for better performance
     core := zapcore.NewCore(
         zapcore.NewJSONEncoder(encoderConfig),
         zapcore.AddSync(os.Stdout),
         atomicLevel,
     )
 
-    // Create logger
+
     Logger = zap.New(core, zap.AddCaller(), zap.AddCallerSkip(1))
     
-    // Replace global logger
+
     zap.ReplaceGlobals(Logger)
 }
 
@@ -93,7 +88,6 @@ func customTimeEncoder(t time.Time, enc zapcore.PrimitiveArrayEncoder) {
     enc.AppendString(t.Format("2006-01-02 15:04:05.000"))
 }
 
-// Keep the rest of your logger functions unchanged
 func Info(message string, fields ...zap.Field) {
     Logger.Info(message, fields...)
 }
@@ -114,7 +108,6 @@ func Fatal(message string, fields ...zap.Field) {
     Logger.Fatal(message, fields...)
 }
 
-// Field helpers for structured logging
 func String(key, val string) zap.Field {
     return zap.String(key, val)
 }
@@ -143,5 +136,4 @@ func Any(key string, val interface{}) zap.Field {
     return zap.Any(key, val)
 }
 
-// Deprecated: Keep for backward compatibility
 var AppLogger = Logger

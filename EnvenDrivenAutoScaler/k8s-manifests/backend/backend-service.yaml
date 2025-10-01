@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: expense-tracker-be-service
+  namespace: expense-tracker
+spec:
+  selector:
+    app: expense-tracker-be
+  ports:
+    - protocol: TCP
+      port: 7070
+      targetPort: 7070 
+  type: ClusterIP

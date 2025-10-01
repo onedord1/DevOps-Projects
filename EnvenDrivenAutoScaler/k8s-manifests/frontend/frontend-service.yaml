@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: expense-tracker-fe-service
+  namespace: expense-tracker
+spec:
+  selector:
+    app: expense-tracker-fe
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 8000
+  type: ClusterIP

@@ -50,26 +50,22 @@ func Connect(cfg *config.Config) (*gorm.DB, error) {
 
     db, err := gorm.Open(dialector, &gorm.Config{
         Logger: logger.Default.LogMode(logLevel),
-        // Add prepared statement caching for better performance
         PrepareStmt: true,
     })
     if err != nil {
         return nil, fmt.Errorf("failed to connect to database: %w", err)
     }
 
-    // Get underlying SQL DB to configure connection pool
     sqlDB, err := db.DB()
     if err != nil {
         return nil, fmt.Errorf("failed to get underlying SQL DB: %w", err)
     }
 
-    // Configure connection pool for high concurrency
     sqlDB.SetMaxOpenConns(cfg.Database.MaxOpenConns)
     sqlDB.SetMaxIdleConns(cfg.Database.MaxIdleConns)
     sqlDB.SetConnMaxLifetime(cfg.Database.ConnMaxLifetime)
     sqlDB.SetConnMaxIdleTime(cfg.Database.ConnMaxIdleTime)
 
-    // Auto migrate models
     err = db.AutoMigrate(
         &models.User{},
         &models.Category{},
@@ -86,23 +82,19 @@ func Connect(cfg *config.Config) (*gorm.DB, error) {
 }
 
 func RunMigrations(db *gorm.DB, cfg *config.Config) error {
-    // Create system user if it doesn't exist
     systemUserID, err := createSystemUser(db)
     if err != nil {
         return err
     }
 
-    // Seed default categories
     if err := seedDefaultCategories(db, systemUserID); err != nil {
         return err
     }
 
-    // Seed default tags
     if err := seedDefaultTags(db); err != nil {
         return err
     }
 
-    // Create join table for transaction-tags many-to-many relationship
     if err := createTransactionTagsJoinTable(db); err != nil {
         return err
     }
@@ -115,16 +107,13 @@ func createSystemUser(db *gorm.DB) (uint, error) {
     result := db.Where("email = ?", "system@expensetracker.local").First(&systemUser)
     
     if result.Error == nil {
-        // System user already exists
         return systemUser.ID, nil
     }
     
     if result.Error != gorm.ErrRecordNotFound {
-        // Some other error occurred
         return 0, result.Error
     }
     
-    // Create a new system user
     hashedPassword, err := bcrypt.GenerateFromPassword([]byte("system-password"), bcrypt.DefaultCost)
     if err != nil {
         return 0, fmt.Errorf("failed to hash password for system user: %w", err)
@@ -145,7 +134,6 @@ func createSystemUser(db *gorm.DB) (uint, error) {
 }
 
 func seedDefaultCategories(db *gorm.DB, systemUserID uint) error {
-    // Convert string types to models.CategoryType
     defaultCategories := []models.Category{
         {Name: "Food & Dining", Type: "expense", Color: "#F59E0B", Icon: "🍕", UserID: systemUserID},
         {Name: "Transportation", Type: "expense", Color: "#3B82F6", Icon: "🚗", UserID: systemUserID},
@@ -174,7 +162,7 @@ func seedDefaultCategories(db *gorm.DB, systemUserID uint) error {
 
 func seedDefaultTags(db *gorm.DB) error {
     defaultTags := []models.Tag{
-        {Name: "Business", Color: "#10B981"},      // user_id is NULL by default
+        {Name: "Business", Color: "#10B981"},      
         {Name: "Personal", Color: "#3B82F6"},
         {Name: "Essential", Color: "#EF4444"},
         {Name: "Recurring", Color: "#06B6D4"},
@@ -210,7 +198,6 @@ func seedDefaultTags(db *gorm.DB) error {
 }
 
 func createTransactionTagsJoinTable(db *gorm.DB) error {
-    // Check if the join table exists
     if !db.Migrator().HasTable("transaction_tags") {
         if err := db.Exec(`
             CREATE TABLE transaction_tags (

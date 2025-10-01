@@ -1,22 +1,11 @@
-// Configuration file for the expense tracker app
-// Update the API_URL with your backend endpoint (running on port 8080)
 export const config = {
-  // Backend API configuration
-  API_URL: 'http://localhost:7070/api', // Replace with your actual backend URL
-  
-  // App configuration
+  API_URL: import.meta.env.VITE_API_URL, // Replace with your actual backend URL
   APP_NAME: 'ExpenseTracker',
   VERSION: '1.0.0',
-  
-  // Pagination
   DEFAULT_PAGE_SIZE: 20,
   MAX_PAGE_SIZE: 100,
-  
-  // File upload
-  MAX_FILE_SIZE: 5 * 1024 * 1024, // 5MB
+  MAX_FILE_SIZE: 5 * 1024 * 1024,
   ALLOWED_FILE_TYPES: ['image/jpeg', 'image/png', 'image/gif', 'application/pdf'],
-  
-  // Currency options
   DEFAULT_CURRENCY: 'USD',
   SUPPORTED_CURRENCIES: [
     { code: 'USD', symbol: '$', name: 'US Dollar' },
@@ -26,15 +15,9 @@ export const config = {
     { code: 'CAD', symbol: 'C$', name: 'Canadian Dollar' },
     { code: 'AUD', symbol: 'A$', name: 'Australian Dollar' },
   ],
-  
-  // Theme configuration
   DEFAULT_THEME: 'light',
-  
-  // Date formats
   DATE_FORMAT: 'YYYY-MM-DD',
   DISPLAY_DATE_FORMAT: 'MMM DD, YYYY',
-  
-  // Chart colors
   CHART_COLORS: [
     '#3B82F6', // Blue
     '#14B8A6', // Teal
