@@ -8,38 +8,34 @@ import (
 	"expense-tracker/internal/utils"
 )
 
+var bufferPool = utils.NewBufferPool()
+
 func Logger() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// Start timer
 		start := time.Now()
 		path := c.Request.URL.Path
 		raw := c.Request.URL.RawQuery
 
-		// Process request
 		c.Next()
 
-		// Stop timer
 		end := time.Now()
 		latency := end.Sub(start)
 
-		// Get status code
 		statusCode := c.Writer.Status()
 
-		// Get client IP
 		clientIP := c.ClientIP()
 
-		// Get method
 		method := c.Request.Method
 
-		// Get path with query parameters
 		if raw != "" {
 			path = path + "?" + raw
 		}
 
-		// Get error message if any
 		errorMessage := c.Errors.ByType(gin.ErrorTypePrivate).String()
 
-		// Log with different levels based on status code
+		buf := bufferPool.Get()
+		defer bufferPool.Put(buf)
+
 		if statusCode >= 500 {
 			utils.Err("HTTP request",
 				utils.String("method", method),

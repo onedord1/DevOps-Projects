@@ -1,8 +1,9 @@
 package middleware
 
 import (
+	"context"
 	"net/http"
-	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 
@@ -18,15 +19,19 @@ func AuthRequired(jwtSecret string) gin.HandlerFunc {
 			return
 		}
 
-		// Extract token from "Bearer <token>"
-		tokenString := strings.TrimPrefix(authHeader, "Bearer ")
-		if tokenString == authHeader {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid authorization format"})
+		// Extract token from header
+		tokenString, err := utils.ExtractTokenFromHeader(authHeader)
+		if err != nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
 			c.Abort()
 			return
 		}
 
-		userID, err := utils.ValidateJWT(tokenString, jwtSecret)
+		// Add timeout context for JWT validation (2 seconds)
+		ctx, cancel := context.WithTimeout(c.Request.Context(), 2*time.Second)
+		defer cancel()
+
+		userID, err := utils.ValidateJWTWithContext(ctx, tokenString, jwtSecret)
 		if err != nil {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token"})
 			c.Abort()

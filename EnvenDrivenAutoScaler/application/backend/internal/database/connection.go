@@ -50,10 +50,24 @@ func Connect(cfg *config.Config) (*gorm.DB, error) {
 
     db, err := gorm.Open(dialector, &gorm.Config{
         Logger: logger.Default.LogMode(logLevel),
+        // Add prepared statement caching for better performance
+        PrepareStmt: true,
     })
     if err != nil {
         return nil, fmt.Errorf("failed to connect to database: %w", err)
     }
+
+    // Get underlying SQL DB to configure connection pool
+    sqlDB, err := db.DB()
+    if err != nil {
+        return nil, fmt.Errorf("failed to get underlying SQL DB: %w", err)
+    }
+
+    // Configure connection pool for high concurrency
+    sqlDB.SetMaxOpenConns(cfg.Database.MaxOpenConns)
+    sqlDB.SetMaxIdleConns(cfg.Database.MaxIdleConns)
+    sqlDB.SetConnMaxLifetime(cfg.Database.ConnMaxLifetime)
+    sqlDB.SetConnMaxIdleTime(cfg.Database.ConnMaxIdleTime)
 
     // Auto migrate models
     err = db.AutoMigrate(

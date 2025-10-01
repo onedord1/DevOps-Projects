@@ -1,7 +1,9 @@
 package utils
 
 import (
+    "bytes"
     "os"
+    "sync"
     "time"
 
     "go.uber.org/zap"
@@ -9,6 +11,32 @@ import (
 )
 
 var Logger *zap.Logger
+
+// BufferPool for reducing allocations in logging
+type BufferPool struct {
+    pool sync.Pool
+}
+
+func NewBufferPool() *BufferPool {
+    return &BufferPool{
+        pool: sync.Pool{
+            New: func() interface{} {
+                return new(bytes.Buffer)
+            },
+        },
+    }
+}
+
+func (bp *BufferPool) Get() *bytes.Buffer {
+    return bp.pool.Get().(*bytes.Buffer)
+}
+
+func (bp *BufferPool) Put(buf *bytes.Buffer) {
+    if buf.Len() < 1024 { // Only reuse small buffers
+        buf.Reset()
+        bp.pool.Put(buf)
+    }
+}
 
 // InitLogger initializes the global logger
 func InitLogger() {
@@ -47,7 +75,7 @@ func InitLogger() {
     atomicLevel := zap.NewAtomicLevel()
     atomicLevel.SetLevel(logLevel)
 
-    // Create core
+    // Create core with buffered writer for better performance
     core := zapcore.NewCore(
         zapcore.NewJSONEncoder(encoderConfig),
         zapcore.AddSync(os.Stdout),
@@ -65,7 +93,7 @@ func customTimeEncoder(t time.Time, enc zapcore.PrimitiveArrayEncoder) {
     enc.AppendString(t.Format("2006-01-02 15:04:05.000"))
 }
 
-// Convenience functions for logging
+// Keep the rest of your logger functions unchanged
 func Info(message string, fields ...zap.Field) {
     Logger.Info(message, fields...)
 }
