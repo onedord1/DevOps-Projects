@@ -1,0 +1,49 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+metadata:
+  name: expense-tracker-base
+
+namespace: expense-tracker
+
+commonLabels:
+  app: expense-tracker
+  managed-by: kustomize
+
+resources:
+- resources/frontend/frontend-deployment.yaml
+- resources/frontend/frontend-service.yaml
+
+- resources/backend/backend-deployment.yaml
+- resources/backend/backend-service.yaml
+
+- resources/database/postgres-sts.yaml
+- resources/database/postgres-service.yaml
+
+- resources/routing/ingress.yaml
+
+generatorOptions:
+  disableNameSuffixHash: false
+
+configMapGenerator:
+- name: backend-config
+  files:
+  - configs/backend-config.properties
+- name: postgres-config
+  files:
+  - configs/postgres-init.sql
+
+secretGenerator:
+- name: backend-secret
+  envs:
+  - configs/secrets.env
+- name: postgres-secret
+  literals:
+  - postgres-user=cG9zdGdyZXM=
+  - postgres-password=c3Ryb25nUGFzc3dvcmQxMjM0
+  - db-username=YXBwbGljYXRpb251c2Vy
+  - db-password=YXBwbGljYXRpb25QYXNzNDMyMQ==
+- name: docker-registry-secret
+  type: kubernetes.io/dockerconfigjson
+  files:
+  - .dockerconfigjson=configs/dockerconfigjson.json

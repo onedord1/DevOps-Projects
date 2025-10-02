@@ -1,0 +1,13 @@
+CREATE DATABASE expense_tracker;
+CREATE USER applicationuser WITH PASSWORD 'applicationPass4321';
+GRANT CONNECT ON DATABASE expense_tracker TO applicationuser;
+\c expense_tracker
+GRANT ALL PRIVILEGES ON DATABASE expense_tracker TO applicationuser;
+ALTER USER applicationuser CREATEDB;
+CREATE SCHEMA IF NOT EXISTS public;
+GRANT USAGE ON SCHEMA public TO applicationuser;
+GRANT CREATE ON SCHEMA public TO applicationuser;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public
+GRANT ALL PRIVILEGES ON TABLES TO applicationuser;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public
+GRANT ALL PRIVILEGES ON SEQUENCES TO applicationuser;

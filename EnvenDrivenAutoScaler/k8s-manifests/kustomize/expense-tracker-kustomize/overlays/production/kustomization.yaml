@@ -1,0 +1,33 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+bases:
+- ../../base
+
+namePrefix: prod-
+
+commonLabels:
+  env: production
+  org: acme-corp
+
+patchesStrategicMerge:
+- patches/backend-config.yaml
+- patches/replica-counts.yaml
+- patches/resource-limits.yaml
+- patches/security-hardening.yaml
+
+images:
+- name: docker.io/kaderdevops/expense-tracker-be
+  newTag: v1.0
+- name: docker.io/kaderdevops/expense-tracker-fe
+  newTag: v1.2
+- name: postgres
+  newTag: 17
+
+replicas:
+- name: expense-tracker-be
+  count: 3
+- name: expense-tracker-fe
+  count: 2
+- name: postgres-sts
+  count: 1
