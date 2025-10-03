@@ -1,11 +1,13 @@
+# overlays/development/patches/backend-config.yaml (This will now work)
 apiVersion: v1
 kind: ConfigMap
 metadata:
   name: backend-config
 data:
+  DB_HOST: "dev-postgres-service"
+  DB_USERNAME: "applicationuser"
   ENVIRONMENT: "development"
   LOG_LEVEL: "DEBUG"
   ENABLE_PROFILING: "true"
-  DB_HOST: "postgres-service"
   REDIS_HOST: "redis-service"
   ELASTICSEARCH_URL: "http://elasticsearch-service:9200"

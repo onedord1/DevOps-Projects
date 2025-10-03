@@ -21,9 +21,15 @@ spec:
         fsGroup: 101
       containers:
       - name: frontend
-        image: docker.io/kaderdevops/expense-tracker-fe:v1.2
+        image: docker.io/kaderdevops/expense-tracker-fe:v1.3
         ports:
         - containerPort: 8000
+        env:
+        - name: API_URL
+          valueFrom:
+            configMapKeyRef:
+              name: frontend-config
+              key: API_URL
         resources:
           requests:
             memory: "128Mi"
@@ -41,13 +47,13 @@ spec:
           mountPath: /var/run
         livenessProbe:
           httpGet:
-            path: /
+            path: /health
             port: 8000
           initialDelaySeconds: 10
           periodSeconds: 15
         readinessProbe:
           httpGet:
-            path: /
+            path: /health
             port: 8000
           initialDelaySeconds: 5
           periodSeconds: 5

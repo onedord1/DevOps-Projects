@@ -1,16 +1,18 @@
+# overlays/production/kustomization.yaml (FIXED VERSION)
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
-bases:
+resources:
 - ../../base
 
 namePrefix: prod-
 
-commonLabels:
-  env: production
-  org: acme-corp
+labels:
+  - pairs:
+      env: production
+      org: acme-corp
 
-patchesStrategicMerge:
+patches:
 - patches/backend-config.yaml
 - patches/replica-counts.yaml
 - patches/resource-limits.yaml

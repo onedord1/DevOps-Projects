@@ -1,4 +1,4 @@
-FROM registry.cloudaes.com/base-images/node:20-alpine AS builder
+FROM node:20-alpine AS builder
 WORKDIR /app
 ARG VITE_API_URL
 COPY package* .
@@ -7,7 +7,7 @@ COPY . .
 ENV VITE_API_URL=$VITE_API_URL
 RUN npm run build -- --logLevel info
 
-FROM registry.cloudaes.com/base-images/nginx:1.29.1-alpine-slim
+FROM base-images/nginx:1.29.1-alpine-slim
 RUN addgroup -g 1001 appgroup && \
     adduser -u 1001 -G appgroup -h /home/appuser -s /bin/sh -D appuser && \
     mkdir -p /run /var/cache/nginx/client_temp /var/cache/nginx/proxy_temp /var/cache/nginx/fastcgi_temp /var/cache/nginx/uwsgi_temp /var/cache/nginx/scgi_temp && \

@@ -1,25 +1,29 @@
+# overlays/development/kustomization.yaml (CORRECTED PATCHES SYNTAX)
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
-bases:
+resources:
 - ../../base
 
 namePrefix: dev-
 
-commonLabels:
-  env: development
+labels:
+  - pairs:
+      env: development
 
-patchesStrategicMerge:
-- patches/backend-config.yaml
-- patches/replica-counts.yaml
+# Use the correct patches syntax
+patches:
+- path: patches/frontend-config.yaml
+- path: patches/backend-config.yaml
+- path: patches/replica-counts.yaml
 
 images:
 - name: docker.io/kaderdevops/expense-tracker-be
-  newTag: latest
+  newTag: "v1.0"
 - name: docker.io/kaderdevops/expense-tracker-fe
-  newTag: latest
+  newTag: "v1.4"
 - name: postgres
-  newTag: latest
+  newTag: "17"
 
 replicas:
 - name: expense-tracker-be

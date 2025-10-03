@@ -1,0 +1,400 @@
+apiVersion: v1
+data:
+  DB_CONN_MAX_IDLE_TIME: 1m
+  DB_CONN_MAX_LIFETIME: 5m
+  DB_DRIVER: postgres
+  DB_HOST: dev-postgres-service
+  DB_MAX_IDLE_CONNS: "25"
+  DB_MAX_OPEN_CONNS: "100"
+  DB_NAME: expense_tracker
+  DB_PORT: "5432"
+  DB_SSL_MODE: disable
+  DB_USERNAME: applicationuser
+  ELASTICSEARCH_INDEX: expenses
+  ELASTICSEARCH_URL: http://elasticsearch-service:9200
+  ELASTICSEARCH_USERNAME: ""
+  ENABLE_PROFILING: "true"
+  ENVIRONMENT: development
+  FROM_EMAIL: your-email@gmail.com
+  GOGC: "100"
+  GOMAXPROCS: "0"
+  GOMEMLIMIT: "1073741824"
+  IDLE_TIMEOUT: 120s
+  JWT_EXPIRY_DAYS: "7"
+  LOG_LEVEL: DEBUG
+  MAX_FILE_SIZE: "10485760"
+  PORT: "7070"
+  READ_TIMEOUT: 5s
+  REDIS_DB: "0"
+  REDIS_HOST: redis-service
+  REDIS_POOL_SIZE: "50"
+  REDIS_PORT: "6379"
+  SMTP_HOST: smtp.gmail.com
+  SMTP_PORT: "587"
+  SMTP_USERNAME: your-email@gmail.com
+  STORAGE_TYPE: local
+  UPLOAD_DIR: /app/uploads
+  WRITE_TIMEOUT: 10s
+kind: ConfigMap
+metadata:
+  labels:
+    app: expense-tracker
+    env: development
+    managed-by: kustomize
+  name: dev-backend-config-h8gdh698h5
+  namespace: expense-tracker
+---
+apiVersion: v1
+data:
+  API_URL: http://dev-expense-tracker-be-service:7070
+kind: ConfigMap
+metadata:
+  labels:
+    app: expense-tracker
+    env: development
+    managed-by: kustomize
+  name: dev-frontend-config-mg88h5486k
+  namespace: expense-tracker
+---
+apiVersion: v1
+data:
+  postgres-init.sql: |
+    CREATE DATABASE expense_tracker;
+    CREATE USER applicationuser WITH PASSWORD 'applicationPass4321';
+    GRANT CONNECT ON DATABASE expense_tracker TO applicationuser;
+    \c expense_tracker
+    GRANT ALL PRIVILEGES ON DATABASE expense_tracker TO applicationuser;
+    ALTER USER applicationuser CREATEDB;
+    CREATE SCHEMA IF NOT EXISTS public;
+    GRANT USAGE ON SCHEMA public TO applicationuser;
+    GRANT CREATE ON SCHEMA public TO applicationuser;
+    ALTER DEFAULT PRIVILEGES IN SCHEMA public
+    GRANT ALL PRIVILEGES ON TABLES TO applicationuser;
+    ALTER DEFAULT PRIVILEGES IN SCHEMA public
+    GRANT ALL PRIVILEGES ON SEQUENCES TO applicationuser;
+kind: ConfigMap
+metadata:
+  labels:
+    app: expense-tracker
+    env: development
+    managed-by: kustomize
+  name: dev-postgres-config-44db27246h
+  namespace: expense-tracker
+---
+apiVersion: v1
+data:
+  DB_PASSWORD: YXBwbGljYXRpb25QYXNzNDMyMQ==
+  ELASTICSEARCH_PASSWORD: eW91ci1hcHAtcGFzc3dvcmQ=
+  JWT_SECRET: VU1ucmk1cUp1QXcvT3NSZTlnY0dPYjJ2L1ZZZnZxYTZxcFNpNEtZams9
+  REDIS_PASSWORD: eW91ci1hcHAtcGFzc3dvcmQ=
+  SMTP_PASSWORD: eW91ci1hcHAtcGFzc3dvcmQ=
+kind: Secret
+metadata:
+  labels:
+    app: expense-tracker
+    env: development
+    managed-by: kustomize
+  name: dev-backend-secret-2th2mb464g
+  namespace: expense-tracker
+type: Opaque
+---
+apiVersion: v1
+data:
+  .dockerconfigjson: |
+    eyJhdXRocyI6eyJodHRwczovL2luZGV4LmRvY2tlci5pby92MS8iOnsidXNlcm5hbWUiOi
+    JrYWRlcmRldm9wcyIsInBhc3N3b3JkIjoiZGNrcl9wYXRfQkY2a2RkTFBYM0FnR2FxLTZO
+    OEVIMmhtZG5NIiwiYXV0aCI6IllXUmxjbVJsZG05d2N6cGtZMnR5WDNCaGRGOUNSalpyWk
+    dSTVVGZ3pRV2RIWVhFdE5rNDRSMGd5YUcxa2JrMD0ifX19Cg==
+kind: Secret
+metadata:
+  labels:
+    app: expense-tracker
+    env: development
+    managed-by: kustomize
+  name: dev-docker-registry-secret-t824fdtgc8
+  namespace: expense-tracker
+type: kubernetes.io/dockerconfigjson
+---
+apiVersion: v1
+data:
+  DB_PASSWORD: YXBwbGljYXRpb25QYXNzNDMyMQ==
+  DB_USERNAME: YXBwbGljYXRpb251c2Vy
+  POSTGRES_PASSWORD: c3Ryb25nUGFzc3dvcmQxMjM0
+  POSTGRES_USER: cG9zdGdyZXM=
+kind: Secret
+metadata:
+  labels:
+    app: expense-tracker
+    env: development
+    managed-by: kustomize
+  name: dev-postgres-secret-cbm96c8t45
+  namespace: expense-tracker
+type: Opaque
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: expense-tracker
+    env: development
+    managed-by: kustomize
+  name: dev-expense-tracker-be-service
+  namespace: expense-tracker
+spec:
+  ports:
+  - port: 7070
+    protocol: TCP
+    targetPort: 7070
+  selector:
+    app: expense-tracker-be
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: expense-tracker
+    env: development
+    managed-by: kustomize
+  name: dev-expense-tracker-fe-service
+  namespace: expense-tracker
+spec:
+  ports:
+  - port: 80
+    protocol: TCP
+    targetPort: 8000
+  selector:
+    app: expense-tracker-fe
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: expense-tracker
+    env: development
+    managed-by: kustomize
+  name: dev-postgres-service
+  namespace: expense-tracker
+spec:
+  ports:
+  - port: 5432
+    targetPort: 5432
+  selector:
+    app: postgres
+  type: ClusterIP
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: expense-tracker
+    env: development
+    managed-by: kustomize
+  name: dev-expense-tracker-be
+  namespace: expense-tracker
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: expense-tracker-be
+  template:
+    metadata:
+      labels:
+        app: expense-tracker-be
+    spec:
+      containers:
+      - envFrom:
+        - configMapRef:
+            name: dev-backend-config-h8gdh698h5
+        - secretRef:
+            name: dev-backend-secret-2th2mb464g
+        image: docker.io/kaderdevops/expense-tracker-be:v1.0
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 7070
+          initialDelaySeconds: 15
+          periodSeconds: 20
+        name: backend
+        ports:
+        - containerPort: 7070
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 7070
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        resources:
+          limits:
+            cpu: 500m
+            memory: 1Gi
+          requests:
+            cpu: 250m
+            memory: 256Mi
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+        volumeMounts:
+        - mountPath: /app/uploads
+          name: uploads-volume
+      imagePullSecrets:
+      - name: dev-docker-registry-secret-t824fdtgc8
+      securityContext:
+        fsGroup: 1001
+        runAsGroup: 1001
+        runAsNonRoot: true
+        runAsUser: 1001
+      volumes:
+      - emptyDir: {}
+        name: uploads-volume
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: expense-tracker
+    env: development
+    managed-by: kustomize
+  name: dev-expense-tracker-fe
+  namespace: expense-tracker
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: expense-tracker-fe
+  template:
+    metadata:
+      labels:
+        app: expense-tracker-fe
+    spec:
+      containers:
+      - env:
+        - name: API_URL
+          valueFrom:
+            configMapKeyRef:
+              key: API_URL
+              name: dev-frontend-config-mg88h5486k
+        image: docker.io/kaderdevops/expense-tracker-fe:v1.3
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 8000
+          initialDelaySeconds: 10
+          periodSeconds: 15
+        name: frontend
+        ports:
+        - containerPort: 8000
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 8000
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        resources:
+          limits:
+            cpu: 200m
+            memory: 256Mi
+          requests:
+            cpu: 100m
+            memory: 128Mi
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+        volumeMounts:
+        - mountPath: /var/cache/nginx
+          name: nginx-cache
+        - mountPath: /var/run
+          name: nginx-pid
+      imagePullSecrets:
+      - name: dev-docker-registry-secret-t824fdtgc8
+      securityContext:
+        fsGroup: 101
+        runAsGroup: 101
+        runAsNonRoot: true
+        runAsUser: 101
+      volumes:
+      - emptyDir: {}
+        name: nginx-cache
+      - emptyDir: {}
+        name: nginx-pid
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  labels:
+    app: expense-tracker
+    env: development
+    managed-by: kustomize
+  name: dev-postgres-sts
+  namespace: expense-tracker
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres
+  serviceName: dev-postgres-service
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      containers:
+      - env:
+        - name: POSTGRES_USER
+          valueFrom:
+            secretKeyRef:
+              key: POSTGRES_USER
+              name: dev-postgres-secret-cbm96c8t45
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: POSTGRES_PASSWORD
+              name: dev-postgres-secret-cbm96c8t45
+        - name: POSTGRES_DB
+          value: postgres
+        - name: PGDATA
+          value: /var/lib/postgresql/data/pgdata
+        image: postgres:17
+        livenessProbe:
+          exec:
+            command:
+            - pg_isready
+            - -U
+            - $(POSTGRES_USER)
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        name: postgres
+        ports:
+        - containerPort: 5432
+        readinessProbe:
+          exec:
+            command:
+            - pg_isready
+            - -U
+            - $(POSTGRES_USER)
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        volumeMounts:
+        - mountPath: /var/lib/postgresql/data
+          name: postgres-pvc
+        - mountPath: /docker-entrypoint-initdb.d
+          name: postgres-init-script
+      securityContext:
+        fsGroup: 999
+        runAsGroup: 999
+        runAsUser: 999
+      volumes:
+      - configMap:
+          name: dev-postgres-config-44db27246h
+        name: postgres-init-script
+  volumeClaimTemplates:
+  - metadata:
+      name: postgres-pvc
+    spec:
+      accessModes:
+      - ReadWriteOnce
+      resources:
+        requests:
+          storage: 2Gi
+      storageClassName: longhorn

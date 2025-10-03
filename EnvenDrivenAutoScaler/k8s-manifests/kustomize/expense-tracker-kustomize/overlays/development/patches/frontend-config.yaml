@@ -1,0 +1,7 @@
+# overlays/development/patches/frontend-config.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: frontend-config
+data:
+  API_URL: "http://dev-expense-tracker-be-service:7070"
