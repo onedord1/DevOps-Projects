@@ -1,0 +1,12 @@
+apiVersion: v2
+name: expense-tracker
+description: “Helm chart for Expense Tracker application (frontend + backend + postgres + ingress)”
+type: application
+version: 0.1.0
+appVersion: "v1.0"
+keywords:
+  - expense
+  - tracker
+maintainers:
+  - name: yourname
+    email: you@example.com

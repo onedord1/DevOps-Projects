@@ -1,0 +1,15 @@
+{{- if .Values.ingress.enabled }}
+Your application should be available at:
+
+  http://{{ (index .Values.ingress.hosts 0).host }}
+
+IngressClass: {{ .Values.ingress.ingressClassName }}
+{{- else }}
+You have disabled Ingress. You can check services directly:
+
+Backend service:
+  kubectl get svc {{ include "expense-tracker.backendName" . }} -n {{ .Values.namespace }}
+
+Frontend service:
+  kubectl get svc {{ include "expense-tracker.frontendName" . }} -n {{ .Values.namespace }}
+{{- end }}

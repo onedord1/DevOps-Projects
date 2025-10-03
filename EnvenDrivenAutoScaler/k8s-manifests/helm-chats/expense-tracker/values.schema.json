@@ -1,0 +1,170 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "namespace": {
+      "type": "string"
+    },
+    "imagePullSecrets": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "backend": {
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "replicaCount": { "type": "integer", "minimum": 0 },
+        "image": {
+          "type": "object",
+          "properties": {
+            "repository": { "type": "string" },
+            "tag": { "type": "string" },
+            "pullPolicy": { "type": "string" }
+          },
+          "required": ["repository", "tag"]
+        },
+        "ports": {
+          "type": "object",
+          "properties": {
+            "http": { "type": "integer" }
+          },
+          "required": ["http"]
+        },
+        "resources": {
+          "type": "object"
+        },
+        "env": {
+          "type": "object",
+          "additionalProperties": { "type": "string" }
+        },
+        "secret": {
+          "type": "object",
+          "properties": {
+            "DB_PASSWORD": { "type": "string" },
+            "JWT_SECRET": { "type": "string" },
+            "SMTP_PASSWORD": { "type": "string" },
+            "REDIS_PASSWORD": { "type": "string" },
+            "ELASTICSEARCH_PASSWORD": { "type": "string" }
+          }
+        }
+      }
+    },
+    "frontend": {
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "replicaCount": { "type": "integer", "minimum": 0 },
+        "image": {
+          "type": "object",
+          "properties": {
+            "repository": { "type": "string" },
+            "tag": { "type": "string" },
+            "pullPolicy": { "type": "string" }
+          }
+        },
+        "ports": {
+          "type": "object",
+          "properties": {
+            "http": { "type": "integer" }
+          }
+        },
+        "resources": {
+          "type": "object"
+        }
+      }
+    },
+    "postgres": {
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "replicaCount": { "type": "integer", "minimum": 0 },
+        "image": {
+          "type": "object",
+          "properties": {
+            "repository": { "type": "string" },
+            "tag": { "type": "string" },
+            "pullPolicy": { "type": "string" }
+          }
+        },
+        "storage": {
+          "type": "object",
+          "properties": {
+            "size": { "type": "string" },
+            "storageClassName": { "type": "string" }
+          }
+        },
+        "config": {
+          "type": "object",
+          "properties": {
+            "initSql": { "type": "string" }
+          }
+        },
+        "secret": {
+          "type": "object",
+          "properties": {
+            "postgresUser": { "type": "string" },
+            "postgresPassword": { "type": "string" },
+            "dbUsername": { "type": "string" },
+            "dbPassword": { "type": "string" }
+          }
+        }
+      }
+    },
+    "ingress": {
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "ingressClassName": { "type": "string" },
+        "annotations": {
+          "type": "object",
+          "additionalProperties": { "type": "string" }
+        },
+        "hosts": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "host": { "type": "string" },
+              "paths": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "path": { "type": "string" },
+                    "service": {
+                      "type": "object",
+                      "properties": {
+                        "name": { "type": "string" },
+                        "port": { "type": "integer" }
+                      },
+                      "required": ["name", "port"]
+                    }
+                  },
+                  "required": ["path", "service"]
+                }
+              }
+            },
+            "required": ["host", "paths"]
+          }
+        },
+        "tls": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "hosts": {
+                "type": "array",
+                "items": { "type": "string" }
+              },
+              "secretName": { "type": "string" }
+            },
+            "required": ["secretName", "hosts"]
+          }
+        }
+      }
+    }
+  },
+  "required": ["backend", "frontend", "postgres"]
+}

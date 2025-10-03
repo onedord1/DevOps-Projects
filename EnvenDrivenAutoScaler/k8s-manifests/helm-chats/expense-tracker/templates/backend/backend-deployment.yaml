@@ -1,0 +1,63 @@
+{{- if .Values.backend.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "expense-tracker.backendName" . }}
+  labels:
+    {{ include "expense-tracker.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.backend.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ include "expense-tracker.backendName" . }}
+  template:
+    metadata:
+      labels:
+        app: {{ include "expense-tracker.backendName" . }}
+    spec:
+      {{- if .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- range .Values.imagePullSecrets }}
+        - name: {{ . }}
+        {{- end }}
+      {{- end }}
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1001
+        runAsGroup: 1001
+        fsGroup: 1001
+      containers:
+        - name: backend
+          image: "{{ .Values.backend.image.repository }}:{{ .Values.backend.image.tag }}"
+          imagePullPolicy: {{ .Values.backend.image.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.backend.ports.http }}
+          envFrom:
+            - configMapRef:
+                name: {{ include "expense-tracker.backendName" . }}-config
+            - secretRef:
+                name: {{ include "expense-tracker.backendName" . }}-secret
+          resources:
+            {{- toYaml .Values.backend.resources | nindent 12 }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+          volumeMounts:
+            - name: uploads-volume
+              mountPath: /app/uploads
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: {{ .Values.backend.ports.http }}
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: {{ .Values.backend.ports.http }}
+            initialDelaySeconds: 5
+            periodSeconds: 10
+      volumes:
+        - name: uploads-volume
+          emptyDir: {}
+{{- end }}

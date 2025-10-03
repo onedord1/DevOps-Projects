@@ -1,0 +1,14 @@
+{{- if .Values.backend.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "expense-tracker.backendName" . }}-config
+  labels:
+    {{- include "expense-tracker.labels" . | nindent 4 }}
+data:
+  {{- if .Values.backend.env }}
+  {{- range $key, $val := .Values.backend.env }}
+  {{ $key }}: {{ $val | quote }}
+  {{- end }}
+  {{- end }}
+{{- end }}

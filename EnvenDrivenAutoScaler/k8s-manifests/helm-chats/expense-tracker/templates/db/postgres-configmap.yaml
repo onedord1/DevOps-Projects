@@ -1,0 +1,11 @@
+{{- if .Values.postgres.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "expense-tracker.postgresName" . }}-config
+  labels:
+    {{ include "expense-tracker.labels" . | nindent 4 }}
+data:
+  init.sql: |-
+    {{ .Values.postgres.configmap.initSql | default "CREATE DATABASE expense_tracker;" | nindent 4 }}
+{{- end }}

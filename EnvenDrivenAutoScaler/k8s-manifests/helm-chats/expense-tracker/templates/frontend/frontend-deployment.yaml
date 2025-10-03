@@ -1,0 +1,66 @@
+{{- if .Values.frontend.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "expense-tracker.frontendName" . }}
+  labels:
+    {{ include "expense-tracker.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.frontend.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ include "expense-tracker.frontendName" . }}
+  template:
+    metadata:
+      labels:
+        app: {{ include "expense-tracker.frontendName" . }}
+    spec:
+      # --- CORRECTED SECTION ---
+      # The 'imagePullSecrets:' key is now inside the 'if' block.
+      {{- if .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- range .Values.imagePullSecrets }}
+        - name: {{ . }}
+        {{- end }}
+      {{- end }}
+      # --- END OF CORRECTED SECTION ---
+
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 101
+        runAsGroup: 101
+        fsGroup: 101
+      containers:
+        - name: frontend
+          image: "{{ .Values.frontend.image.repository }}:{{ .Values.frontend.image.tag }}"
+          imagePullPolicy: {{ .Values.frontend.image.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.frontend.ports.http }}
+          resources:
+            {{- toYaml .Values.frontend.resources | nindent 12 }} # <-- FIX: Changed indent to nindent
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+          volumeMounts:
+            - name: nginx-cache
+              mountPath: /var/cache/nginx
+            - name: nginx-pid
+              mountPath: /var/run
+          livenessProbe:
+            httpGet:
+              path: /
+              port: {{ .Values.frontend.ports.http }}
+            initialDelaySeconds: 10
+            periodSeconds: 15
+          readinessProbe:
+            httpGet:
+              path: /
+              port: {{ .Values.frontend.ports.http }}
+            initialDelaySeconds: 5
+            periodSeconds: 5
+      volumes:
+        - name: nginx-cache
+          emptyDir: {}
+        - name: nginx-pid
+          emptyDir: {}
+{{- end }}

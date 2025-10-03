@@ -1,0 +1,16 @@
+{{- if .Values.frontend.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "expense-tracker.frontendName" . }}-service
+  labels:
+    {{ include "expense-tracker.labels" . | nindent 4 }}
+spec:
+  selector:
+    app: {{ include "expense-tracker.frontendName" . }}
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: {{ .Values.frontend.ports.http }}
+  type: ClusterIP
+{{- end }}

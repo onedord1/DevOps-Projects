@@ -1,0 +1,20 @@
+{{- if .Values.backend.enabled }}
+apiVersion: v1
+kind: Pod
+metadata:
+  name: {{ include "expense-tracker.backendName" . }}-test-connection
+  labels:
+    {{ include "expense-tracker.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": test
+spec:
+  containers:
+    - name: curl
+      image: curlimages/curl:latest
+      command:
+        - sh
+        - -c
+        - |
+          curl -f http://{{ include "expense-tracker.backendName" . }}-service:{{ .Values.backend.ports.http }}/health
+  restartPolicy: Never
+{{- end }}

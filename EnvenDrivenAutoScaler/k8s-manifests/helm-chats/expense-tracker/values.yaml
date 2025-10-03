@@ -1,0 +1,137 @@
+# global configs (if needed)
+imagePullSecrets: []         # e.g. ["docker-registry-secret"]
+namespace: "expense-tracker" # default namespace, you might allow override
+
+backend:
+  enabled: true
+  replicaCount: 1
+  image:
+    repository: "docker.io/kaderdevops/expense-tracker-be"
+    tag: "v1.0"
+    pullPolicy: IfNotPresent
+  ports:
+    http: 7070
+  resources:
+    requests:
+      memory: "256Mi"
+      cpu: "250m"
+    limits:
+      memory: "1Gi"
+      cpu: "500m"
+  env:
+    DB_DRIVER: "postgres"
+    DB_HOST: "postgres-service"
+    DB_PORT: "5432"
+    DB_USERNAME: "applicationuser"
+    DB_NAME: "expense_tracker"
+    DB_SSL_MODE: "disable"
+    DB_MAX_OPEN_CONNS: "100"
+    DB_MAX_IDLE_CONNS: "25"
+    DB_CONN_MAX_LIFETIME: "5m"
+    DB_CONN_MAX_IDLE_TIME: "1m"
+    JWT_EXPIRY_DAYS: "7"
+    PORT: "7070"
+    ENVIRONMENT: "production"
+    LOG_LEVEL: "INFO"
+    READ_TIMEOUT: "5s"
+    WRITE_TIMEOUT: "10s"
+    IDLE_TIMEOUT: "120s"
+    GOMAXPROCS: "0"
+    GOGC: "100"
+    GOMEMLIMIT: "1073741824"
+    ENABLE_PROFILING: "false"
+    UPLOAD_DIR: "/app/uploads"
+    MAX_FILE_SIZE: "10485760"
+    STORAGE_TYPE: "local"
+    SMTP_HOST: "smtp.gmail.com"
+    SMTP_PORT: "587"
+    SMTP_USERNAME: "your-email@gmail.com"
+    FROM_EMAIL: "your-email@gmail.com"
+    REDIS_HOST: "localhost"
+    REDIS_PORT: "6379"
+    REDIS_DB: "0"
+    REDIS_POOL_SIZE: "50"
+    ELASTICSEARCH_URL: "http://localhost:9200"
+    ELASTICSEARCH_USERNAME: ""
+    ELASTICSEARCH_INDEX: "expenses"
+
+  # secret values (base64 or plaintext)
+  secret:
+    DB_PASSWORD: <base64 or plain>
+    JWT_SECRET: <base64 or plain>
+    SMTP_PASSWORD: <base64 or plain>
+    REDIS_PASSWORD: <base64 or plain>
+    ELASTICSEARCH_PASSWORD: <base64 or plain>
+
+frontend:
+  enabled: true
+  replicaCount: 1
+  image:
+    repository: "docker.io/kaderdevops/expense-tracker-fe"
+    tag: "v1.2"
+    pullPolicy: IfNotPresent
+  ports:
+    http: 8000
+  resources:
+    requests:
+      memory: "128Mi"
+      cpu: "100m"
+    limits:
+      memory: "256Mi"
+      cpu: "200m"
+
+postgres:
+  enabled: true
+  replicaCount: 1
+  image:
+    repository: "postgres"
+    tag: "17"
+    pullPolicy: IfNotPresent
+  storage:
+    size: "2Gi"
+    storageClassName: "longhorn"
+  configmap:
+    initSql: |
+      CREATE DATABASE expense_tracker;
+      CREATE USER applicationuser WITH PASSWORD 'applicationPass4321';
+      GRANT CONNECT ON DATABASE expense_tracker TO applicationuser;
+      \c expense_tracker
+      GRANT ALL PRIVILEGES ON DATABASE expense_tracker TO applicationuser;
+      ALTER USER applicationuser CREATEDB;
+      CREATE SCHEMA IF NOT EXISTS public;
+      GRANT USAGE ON SCHEMA public TO applicationuser;
+      GRANT CREATE ON SCHEMA public TO applicationuser;
+      ALTER DEFAULT PRIVILEGES IN SCHEMA public
+      GRANT ALL PRIVILEGES ON TABLES TO applicationuser;
+      ALTER DEFAULT PRIVILEGES IN SCHEMA public
+      GRANT ALL PRIVILEGES ON SEQUENCES TO applicationuser;
+  secret:
+    postgresUser: <base64 or plain>
+    postgresPassword: <base64 or plain>
+    dbUsername: <base64 or plain>
+    dbPassword: <base64 or plain>
+
+ingress:
+  enabled: true
+  ingressClassName: nginx-expense-tracker
+  annotations:
+    nginx.ingress.kubernetes.io/enable-cors: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: "8m"
+  hosts:
+    - host: example.com
+      paths:
+        - path: /api/
+          service:
+            name: backend
+            port: 7070
+        - path: /
+          service:
+            name: frontend
+            port: 80
+  tls: []  # e.g. hosts + secretName
+
+serviceAccount:
+  create: true
+  name: ""
+  annotations: {}
+  automount: true
