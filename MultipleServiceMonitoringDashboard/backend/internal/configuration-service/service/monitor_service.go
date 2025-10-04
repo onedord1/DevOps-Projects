@@ -53,7 +53,7 @@ func (s *monitorService) GetMonitor(ctx context.Context, id uuid.UUID) (*models.
 }
 
 func (s *monitorService) GetAllMonitors(ctx context.Context, filter map[string]interface{}) ([]*models.Monitor, error) {
-	return s.repo.GetAll(ctx, filter)
+    return s.repo.GetAll(ctx, filter)
 }
 
 func (s *monitorService) UpdateMonitor(ctx context.Context, monitor *models.Monitor) error {

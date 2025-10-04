@@ -30,8 +30,15 @@ type MonitorStatus struct {
 }
 
 func (h *DashboardHandler) GetDashboardView(c *gin.Context) {
-	// 1. Fetch all monitors
-	monitors, err := h.configClient.GetAllMonitors(c.Request.Context())
+	// --- CHANGE: Read the environment query parameter ---
+	env := c.Query("environment")
+	if env == "" {
+		env = "prod" // Default to 'prod' if not provided
+	}
+	// --- END CHANGE ---
+
+	// 1. Fetch all monitors for the given environment
+	monitors, err := h.configClient.GetAllMonitors(c.Request.Context(), env)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch monitors"})
 		return

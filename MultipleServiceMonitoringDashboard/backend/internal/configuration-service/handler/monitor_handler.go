@@ -34,19 +34,23 @@ func (h *MonitorHandler) Create(c *gin.Context) {
 }
 
 func (h *MonitorHandler) GetAll(c *gin.Context) {
-	// Basic filtering, can be expanded
-	filter := make(map[string]interface{})
-	if env := c.Query("environment"); env != "" {
-		filter["environment"] = env
-	}
+    // Read the environment query parameter
+    env := c.Query("environment")
+    if env == "" {
+        env = "prod" // Default to 'prod' if not provided
+    }
 
-	monitors, err := h.monitorService.GetAllMonitors(c.Request.Context(), filter)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch monitors"})
-		return
-	}
+    // --- FIX: Create a filter map from the environment string ---
+    filter := map[string]interface{}{
+        "environment": env,
+    }
 
-	c.JSON(http.StatusOK, monitors)
+    monitors, err := h.monitorService.GetAllMonitors(c.Request.Context(), filter)
+    if err != nil {
+        c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch monitors"})
+        return
+    }
+    c.JSON(http.StatusOK, monitors)
 }
 
 func (h *MonitorHandler) GetByID(c *gin.Context) {

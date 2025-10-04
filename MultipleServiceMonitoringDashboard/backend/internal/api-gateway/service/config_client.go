@@ -1,39 +1,50 @@
 package service
 
 import (
-	"context"
-	"encoding/json"
-	"fmt"
-	"net/http"
+    "context"
+    "encoding/json"
+    "fmt"
+    "net/http"
+    "net/url" // <-- ADD THIS IMPORT
 
-	"github.com/your-org/monitoring-dashboard/internal/common/models"
+    "github.com/your-org/monitoring-dashboard/internal/common/models"
 )
 
 type ConfigClient struct {
-	baseURL string
+    baseURL string
 }
 
 func NewConfigClient(baseURL string) *ConfigClient {
-	return &ConfigClient{baseURL: baseURL}
+    return &ConfigClient{baseURL: baseURL}
 }
 
-func (c *ConfigClient) GetAllMonitors(ctx context.Context) ([]*models.Monitor, error) {
-	req, _ := http.NewRequestWithContext(ctx, "GET", c.baseURL+"/api/v1/monitors", nil)
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
+func (c *ConfigClient) GetAllMonitors(ctx context.Context, environment string) ([]*models.Monitor, error) {
+    // Build the URL with the query parameter
+    base, err := url.Parse(c.baseURL + "/api/v1/monitors")
+    if err != nil {
+        return nil, err
+    }
+    q := base.Query()
+    q.Set("environment", environment)
+    base.RawQuery = q.Encode()
+    url := base.String()
 
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("config service returned status %d", resp.StatusCode)
-	}
+    req, _ := http.NewRequestWithContext(ctx, "GET", url, nil)
+    resp, err := http.DefaultClient.Do(req)
+    if err != nil {
+        return nil, err
+    }
+    defer resp.Body.Close()
 
-	var monitors []*models.Monitor
-	if err := json.NewDecoder(resp.Body).Decode(&monitors); err != nil {
-		return nil, err
-	}
-	return monitors, nil
+    if resp.StatusCode != http.StatusOK {
+        return nil, fmt.Errorf("config service returned status %d", resp.StatusCode)
+    }
+
+    var monitors []*models.Monitor
+    if err := json.NewDecoder(resp.Body).Decode(&monitors); err != nil {
+        return nil, err
+    }
+    return monitors, nil
 }
 
 // Add other methods like GetByID, Create, Update, Delete as needed
