@@ -1,0 +1,28 @@
+-- Remove seed data in reverse order of dependencies
+
+-- Delete options
+DELETE FROM options WHERE question_id IN (SELECT id FROM questions WHERE quiz_id IN (SELECT id FROM quizzes));
+
+-- Delete questions
+DELETE FROM questions WHERE quiz_id IN (SELECT id FROM quizzes);
+
+-- Delete quizzes
+DELETE FROM quizzes WHERE subject_id IN (SELECT id FROM subjects);
+
+-- Delete subjects
+DELETE FROM subjects WHERE id IN (
+    '10000000-0000-0000-0000-000000000001',
+    '10000000-0000-0000-0000-000000000002',
+    '10000000-0000-0000-0000-000000000003',
+    '10000000-0000-0000-0000-000000000004'
+);
+
+-- Delete users
+DELETE FROM users WHERE id IN (
+    '00000000-0000-0000-0000-000000000001',
+    '00000000-0000-0000-0000-000000000002',
+    '00000000-0000-0000-0000-000000000003',
+    '00000000-0000-0000-0000-000000000004',
+    '00000000-0000-0000-0000-000000000005',
+    '00000000-0000-0000-0000-000000000006'
+);

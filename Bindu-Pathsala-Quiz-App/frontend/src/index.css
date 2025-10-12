@@ -1,0 +1,187 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+    /* Enhanced educational color scheme */
+    --primary: 220 100% 60%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 142 76% 36%;
+    --secondary-foreground: 355.7 100% 97.3%;
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 45 93% 58%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 220 100% 60%;
+    --radius: 0.75rem;
+
+    /* Custom educational colors */
+    --success: 142 76% 36%;
+    --warning: 45 93% 58%;
+    --info: 220 100% 60%;
+    --education-blue: 220 100% 60%;
+    --education-green: 142 76% 36%;
+    --education-orange: 45 93% 58%;
+    --education-purple: 262 83% 58%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground font-sans;
+    background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+    min-height: 100vh;
+  }
+
+  /* Enhanced typography */
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-semibold tracking-tight;
+    color: hsl(var(--foreground));
+  }
+
+  h1 {
+    @apply text-4xl lg:text-5xl;
+    background: linear-gradient(135deg, hsl(var(--education-blue)), hsl(var(--education-purple)));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  h2 {
+    @apply text-3xl lg:text-4xl;
+    color: hsl(var(--education-blue));
+  }
+
+  h3 {
+    @apply text-2xl lg:text-3xl;
+    color: hsl(var(--education-green));
+  }
+}
+
+@layer components {
+  /* Enhanced card styling */
+  .card-edu {
+    @apply bg-white/80 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300;
+    background: linear-gradient(145deg, rgba(255,255,255,0.9), rgba(248,250,252,0.9));
+    border: 1px solid rgba(148, 163, 184, 0.1);
+  }
+
+  .card-edu:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  }
+
+  /* Enhanced buttons */
+  .btn-edu-primary {
+    @apply bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-medium px-6 py-3 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105;
+  }
+
+  .btn-edu-secondary {
+    @apply bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white font-medium px-6 py-3 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105;
+  }
+
+  .btn-edu-warning {
+    @apply bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white font-medium px-6 py-3 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105;
+  }
+
+  /* Quiz progress styling */
+  .quiz-progress {
+    @apply relative overflow-hidden rounded-full;
+    background: linear-gradient(90deg, #e2e8f0, #cbd5e1);
+  }
+
+  .quiz-progress-bar {
+    @apply h-full transition-all duration-500 ease-out rounded-full;
+    background: linear-gradient(90deg, hsl(var(--education-blue)), hsl(var(--education-purple)));
+  }
+
+  /* Question styling */
+  .question-card {
+    @apply bg-gradient-to-br from-white via-blue-50/30 to-purple-50/30 border-2 border-transparent hover:border-blue-200 transition-all duration-300;
+  }
+
+  .question-card.correct {
+    @apply border-green-300 bg-gradient-to-br from-green-50 to-emerald-50;
+  }
+
+  .question-card.incorrect {
+    @apply border-red-300 bg-gradient-to-br from-red-50 to-rose-50;
+  }
+
+  .question-card.unanswered {
+    @apply border-gray-200 bg-gradient-to-br from-gray-50 to-slate-50;
+  }
+
+  /* Score styling */
+  .score-excellent {
+    background: linear-gradient(135deg, #10b981, #059669);
+  }
+
+  .score-good {
+    background: linear-gradient(135deg, #3b82f6, #2563eb);
+  }
+
+  .score-average {
+    background: linear-gradient(135deg, #f59e0b, #d97706);
+  }
+
+  .score-poor {
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+  }
+
+  /* Animations */
+  @keyframes fadeInUp {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes pulse-glow {
+    0%, 100% {
+      box-shadow: 0 0 20px rgba(59, 130, 246, 0.3);
+    }
+    50% {
+      box-shadow: 0 0 30px rgba(59, 130, 246, 0.5);
+    }
+  }
+
+  .animate-fade-in-up {
+    animation: fadeInUp 0.6s ease-out;
+  }
+
+  .animate-pulse-glow {
+    animation: pulse-glow 2s ease-in-out infinite;
+  }
+
+  /* Educational icons */
+  .icon-edu {
+    @apply text-blue-600 drop-shadow-sm;
+  }
+
+  .icon-edu-success {
+    @apply text-green-600 drop-shadow-sm;
+  }
+
+  .icon-edu-warning {
+    @apply text-orange-600 drop-shadow-sm;
+  }
+}
