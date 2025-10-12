@@ -1,5 +1,5 @@
 
-domain_name = "shimulmahmud.me"
+domain_name = "kk.me"
 # You can find this in the Route 53 console.
 hosted_zone_id = "Z0055265XILAWQ3V1R2Y" # Example ID, replace with yours
 
@@ -29,6 +29,8 @@ secondary_db_instance_class = "db.t3.medium"
 
 primary_vpc_cidr   = "10.0.0.0/16"
 secondary_vpc_cidr = "10.1.0.0/16"
+primary_azs = ["ap-south-1a", "ap-south-1b", "ap-south-1c"]
+secondary_azs = ["ap-southeast-1a", "ap-southeast-1b", "ap-southeast-1c"]
 ami_id           = "ami-0f9708d1cd2cfee41" 
 secondary_ami_id = "ami-088d74defe9802f14"
 react_app_source_path = "./react-app" 

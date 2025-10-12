@@ -1,13 +1,13 @@
 variable "primary_region" {
   description = "Primary AWS region"
   type        = string
-  default     = "us-east-1"
+  # default     = "us-east-1"
 }
 
 variable "secondary_region" {
   description = "Secondary AWS region for DR"
   type        = string
-  default     = "us-west-2"
+  # default     = "us-west-2"
 }
 
 variable "project_name" {
@@ -122,11 +122,11 @@ variable "secondary_desired_capacity" {
 variable "primary_azs" {
   description = "Availability zones in primary region"
   type        = list(string)
-  default     = ["ap-south-1a", "ap-south-1b", "ap-south-1c"]
+  # default     = ["ap-south-1a", "ap-south-1b", "ap-south-1c"]
 }
 
 variable "secondary_azs" {
   description = "Availability zones in secondary region"
   type        = list(string)
-  default     = ["ap-southeast-1a", "ap-southeast-1b", "ap-southeast-1c"]
+  # default     = ["ap-southeast-1a", "ap-southeast-1b", "ap-southeast-1c"]
 }
