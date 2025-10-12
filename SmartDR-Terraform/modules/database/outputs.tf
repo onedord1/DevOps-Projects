@@ -27,3 +27,13 @@ output "db_credentials_secret_arn" {
   description = "ARN of the secret containing database credentials"
   value       = aws_secretsmanager_secret.db_credentials.arn
 }
+output "db_username" {
+  description = "The master username for the RDS cluster."
+  value       = aws_rds_cluster.primary.master_username
+}
+
+output "db_password" {
+  description = "The master password for the RDS cluster."
+  value       = random_password.password.result
+  sensitive   = true
+}
