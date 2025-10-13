@@ -15,6 +15,16 @@ type contextKey string
 
 const UserContextKey contextKey = "user"
 
+// getStringClaim safely extracts a string claim from JWT token claims
+func getStringClaim(claims jwt.MapClaims, key string) string {
+	if val, exists := claims[key]; exists && val != nil {
+		if str, ok := val.(string); ok {
+			return str
+		}
+	}
+	return "" // Return empty string for missing or invalid claims
+	}
+
 // AuthMiddleware validates JWT tokens
 func AuthMiddleware(jwtSecret string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
@@ -55,7 +65,7 @@ func AuthMiddleware(jwtSecret string) func(http.Handler) http.Handler {
 			}
 
 			// Extract user info from claims
-			userID, err := uuid.Parse(claims["user_id"].(string))
+			userID, err := uuid.Parse(getStringClaim(claims, "user_id"))
 			if err != nil {
 				utils.RespondError(w, http.StatusUnauthorized, "Invalid user ID in token")
 				return
@@ -63,9 +73,11 @@ func AuthMiddleware(jwtSecret string) func(http.Handler) http.Handler {
 
 			user := &models.User{
 				ID:        userID,
-				StudentID: claims["student_id"].(string),
-				Name:      claims["name"].(string),
-				Role:      models.UserRole(claims["role"].(string)),
+				StudentID: getStringClaim(claims, "student_id"),
+				Name:      getStringClaim(claims, "name"),
+				Email:     getStringClaim(claims, "email"), // Email may be missing from old tokens
+				Role:      models.UserRole(getStringClaim(claims, "role")),
+				Batch:     getStringClaim(claims, "batch"), // Extract batch from JWT token (may be nil for old tokens)
 			}
 
 			// Add user to context

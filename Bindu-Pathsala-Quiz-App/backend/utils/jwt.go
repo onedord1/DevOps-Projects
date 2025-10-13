@@ -15,6 +15,7 @@ func GenerateJWT(user *models.User, secret string, expiryHours int) (string, err
 		"name":       user.Name,
 		"email":      user.Email,
 		"role":       string(user.Role),
+		"batch":      user.Batch, // Include batch in JWT token
 		"exp":        time.Now().Add(time.Hour * time.Duration(expiryHours)).Unix(),
 		"iat":        time.Now().Unix(),
 	}

@@ -173,6 +173,12 @@ export const QuizList: React.FC = () => {
                       <div className="flex-1">
                         <CardTitle className="text-xl mb-2">{quiz.title}</CardTitle>
                         <CardDescription>{quiz.description}</CardDescription>
+                        {quiz.batch && (
+                          <div className="flex items-center gap-2 mt-2">
+                            <Users className="h-4 w-4 text-purple-600" />
+                            <span className="text-sm font-medium text-purple-600">{quiz.batch}</span>
+                          </div>
+                        )}
                       </div>
                       {available && (
                         <span className="bg-green-100 text-green-800 text-xs font-semibold px-3 py-1 rounded-full">

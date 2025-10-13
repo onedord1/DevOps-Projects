@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/Input';
 import { Alert, AlertDescription } from '@/components/ui/Alert';
 import { quizAPI, questionAPI, sessionAPI } from '@/services/api';
 import { Quiz, Question, QuizSession } from '@/types';
-import { ArrowLeft, Plus, Trash2, Save, Calendar, Clock } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, Save, Calendar, Clock, Edit } from 'lucide-react';
 
 export const EditQuiz: React.FC = () => {
   const { quizId } = useParams<{ quizId: string }>();
@@ -21,6 +21,7 @@ export const EditQuiz: React.FC = () => {
   const [success, setSuccess] = useState('');
   const [showAddQuestion, setShowAddQuestion] = useState(false);
   const [showAddSession, setShowAddSession] = useState(false);
+  const [showEditQuiz, setShowEditQuiz] = useState(false);
   const [newQuestion, setNewQuestion] = useState({
     text: '',
     time_limit: 60,
@@ -35,6 +36,11 @@ export const EditQuiz: React.FC = () => {
     batch_name: '',
     start_time: '',
     end_time: '',
+  });
+  const [editQuizData, setEditQuizData] = useState({
+    title: '',
+    description: '',
+    batch: '',
   });
 
   useEffect(() => {
@@ -54,6 +60,12 @@ export const EditQuiz: React.FC = () => {
       setQuiz(quizData);
       setQuestions(questionsData);
       setSessions(sessionsData);
+      // Initialize edit form data
+      setEditQuizData({
+        title: quizData.title,
+        description: quizData.description,
+        batch: quizData.batch || '',
+      });
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to load quiz');
     } finally {
@@ -121,7 +133,10 @@ export const EditQuiz: React.FC = () => {
 
   const handlePublishQuiz = async () => {
     try {
-      await quizAPI.update(quizId!, { status: 'published' });
+      await quizAPI.update(quizId!, {
+        status: 'published',
+        batch: quiz?.batch || "",
+      });
       setSuccess('Quiz published successfully!');
       fetchQuizData();
     } catch (err: any) {
@@ -165,6 +180,28 @@ export const EditQuiz: React.FC = () => {
     }
   };
 
+  const handleEditQuiz = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
+    setError('');
+
+    try {
+      await quizAPI.update(quizId!, {
+        title: editQuizData.title,
+        description: editQuizData.description,
+        batch: editQuizData.batch || "",
+      });
+
+      setSuccess('Quiz updated successfully!');
+      setShowEditQuiz(false);
+      fetchQuizData();
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Failed to update quiz');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   if (loading) {
     return (
       <Layout>
@@ -201,6 +238,13 @@ export const EditQuiz: React.FC = () => {
           <div>
             <h1 className="text-3xl font-bold text-gray-900 mb-2">{quiz?.title}</h1>
             <p className="text-gray-600">{quiz?.description}</p>
+            {quiz?.batch && (
+              <div className="mt-2">
+                <span className="px-2 py-1 text-xs font-semibold rounded bg-purple-100 text-purple-800">
+                  Batch: {quiz.batch}
+                </span>
+              </div>
+            )}
             <div className="mt-2">
               <span
                 className={`px-2 py-1 text-xs font-semibold rounded ${
@@ -214,6 +258,13 @@ export const EditQuiz: React.FC = () => {
             </div>
           </div>
           <div className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setShowEditQuiz(!showEditQuiz)}
+            >
+              <Edit className="h-4 w-4 mr-2" />
+              {showEditQuiz ? 'Cancel Edit' : 'Edit Quiz'}
+            </Button>
             {quiz?.status === 'draft' && (
               <Button onClick={handlePublishQuiz}>
                 <Save className="h-4 w-4 mr-2" />
@@ -243,6 +294,62 @@ export const EditQuiz: React.FC = () => {
             </CardContent>
           </Card>
         </div>
+
+        {showEditQuiz && (
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle>Edit Quiz Details</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleEditQuiz} className="space-y-6">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-700">Quiz Title *</label>
+                  <Input
+                    value={editQuizData.title}
+                    onChange={(e) => setEditQuizData({ ...editQuizData, title: e.target.value })}
+                    placeholder="Quiz title"
+                    required
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-700">Description</label>
+                  <Input
+                    value={editQuizData.description}
+                    onChange={(e) => setEditQuizData({ ...editQuizData, description: e.target.value })}
+                    placeholder="Quiz description"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-700">Batch Restriction</label>
+                  <Input
+                    value={editQuizData.batch}
+                    onChange={(e) => setEditQuizData({ ...editQuizData, batch: e.target.value.toUpperCase() })}
+                    placeholder="Enter batch letter (e.g., A, B, C, D, E) or leave empty"
+                    maxLength={1}
+                  />
+                  <p className="text-xs text-gray-500">
+                    Enter a single letter (A-E) to restrict quiz to that batch only
+                  </p>
+                </div>
+
+                <div className="flex gap-4">
+                  <Button type="submit" disabled={saving}>
+                    {saving ? 'Saving...' : 'Save Changes'}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setShowEditQuiz(false)}
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </form>
+            </CardContent>
+          </Card>
+        )}
 
         <Card className="mb-6">
           <CardHeader>

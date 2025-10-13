@@ -120,17 +120,19 @@ export const Register: React.FC = () => {
 
               <div className="space-y-2">
                 <label htmlFor="batch" className="text-sm font-medium text-gray-700">
-                  Batch (Optional)
+                  Batch *
                 </label>
                 <Input
                   id="batch"
                   type="text"
-                  placeholder="e.g., Batch A, Morning Group"
+                  placeholder="Enter your batch (e.g., A, B, C, D, E)"
                   value={batch}
-                  onChange={(e) => setBatch(e.target.value)}
+                  onChange={(e) => setBatch(e.target.value.toUpperCase())}
+                  required
+                  maxLength={1}
                 />
                 <p className="text-xs text-gray-500">
-                  Enter your batch name to see quizzes assigned to your batch
+                  Enter a single letter for your batch (A, B, C, D, or E) - you can only access quizzes for your batch
                 </p>
               </div>
 

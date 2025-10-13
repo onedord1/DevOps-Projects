@@ -142,8 +142,8 @@ func (h *SessionHandler) GetSessionsBySubject(w http.ResponseWriter, r *http.Req
 			subjectID, true, now, now)
 
 	// Filter by batch if user has a batch assigned
-	if user.Batch != nil && *user.Batch != "" {
-		query = query.Where("quiz_sessions.batch_name = ?", *user.Batch)
+	if user.Batch != "" {
+		query = query.Where("quiz_sessions.batch_name = ?", user.Batch)
 	}
 
 	query = query.Preload("Quiz").Preload("Quiz.Subject")

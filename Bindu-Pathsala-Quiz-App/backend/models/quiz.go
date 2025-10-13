@@ -27,6 +27,7 @@ type Quiz struct {
 	AllowedTime      *int       `gorm:"type:integer" json:"allowed_time"`      // total time in seconds, nullable
 	RandomizeOrder   bool       `gorm:"default:false" json:"randomize_order"`
 	Status           QuizStatus `gorm:"type:quiz_status;default:'draft'" json:"status"`
+	Batch            string     `gorm:"type:varchar(255)" json:"batch"`       // Optional batch restriction
 	CreatedAt        time.Time  `gorm:"default:CURRENT_TIMESTAMP" json:"created_at"`
 	UpdatedAt        time.Time  `gorm:"default:CURRENT_TIMESTAMP" json:"updated_at"`
 

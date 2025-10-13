@@ -30,6 +30,7 @@ type CreateQuizRequest struct {
 	TimePerQuestion *int      `json:"time_per_question"`
 	AllowedTime     *int      `json:"allowed_time"`
 	RandomizeOrder  bool      `json:"randomize_order"`
+	Batch           string    `json:"batch"`
 }
 
 type UpdateQuizRequest struct {
@@ -41,6 +42,7 @@ type UpdateQuizRequest struct {
 	AllowedTime     *int      `json:"allowed_time"`
 	RandomizeOrder  bool      `json:"randomize_order"`
 	Status          string    `json:"status"`
+	Batch           string    `json:"batch"`
 }
 
 // isQuizAvailableForUser checks if a quiz is available for a specific user (considering sessions)
@@ -57,28 +59,48 @@ func isQuizAvailableForUser(quiz *models.Quiz, user *models.User) bool {
 		return false // User has already submitted this quiz
 	}
 
-	// For testing purposes: make all published quizzes available to all students
-	// TODO: Remove this after testing and implement proper batch/session logic
+	// For published quizzes, check batch restrictions
 	if quiz.Status == models.QuizStatusPublished {
-		fmt.Printf("DEBUG: Making quiz %s available for testing - bypassing time/batch restrictions\n", quiz.ID)
-		return true
+		// If quiz has a batch restriction, check if user is in that batch
+		if quiz.Batch != "" {
+			// Quiz is restricted to a specific batch
+			if user.Batch == "" {
+				// User has no batch, cannot access batch-restricted quiz
+				fmt.Printf("DEBUG: User has no batch, cannot access batch-restricted quiz %s\n", quiz.ID)
+				return false
+			} else if user.Batch != quiz.Batch {
+				// User batch doesn't match quiz batch
+				fmt.Printf("DEBUG: User batch %s doesn't match quiz batch %s\n", user.Batch, quiz.Batch)
+				return false
+			}
+			// User batch matches quiz batch
+			return true
+		} else {
+			// Quiz has no batch restriction (global)
+			if user.Batch != "" {
+				// User has a batch, cannot access global quizzes with strict isolation
+				fmt.Printf("DEBUG: User with batch %s cannot access global quiz %s\n", user.Batch, quiz.ID)
+				return false
+			}
+			// User has no batch, can access global quiz
+			return true
+		}
 	}
 
-	fmt.Printf("DEBUG: Quiz %s not available - now: %v, start: %v, end: %v, status: %s\n",
-		quiz.ID, now, quiz.StartTime, quiz.EndTime, quiz.Status)
+	fmt.Printf("DEBUG: Quiz %s not available - status: %s\n", quiz.ID, quiz.Status)
 
 	// If quiz itself is not available, check if there's an active session for user's batch
-	if user != nil && user.Batch != nil && *user.Batch != "" {
+	if user != nil && user.Batch != "" {
 		var session models.QuizSession
 		err := database.DB.Where("quiz_id = ? AND batch_name = ? AND is_active = ? AND start_time <= ? AND end_time >= ?",
-			quiz.ID, *user.Batch, true, now, now).First(&session).Error
+			quiz.ID, user.Batch, true, now, now).First(&session).Error
 
 		if err != nil {
-			fmt.Printf("DEBUG: No active session found for user batch: %s\n", *user.Batch)
+			fmt.Printf("DEBUG: No active session found for user batch: %s\n", user.Batch)
 			return false
 		}
 
-		fmt.Printf("DEBUG: Active session found for user batch: %s\n", *user.Batch)
+		fmt.Printf("DEBUG: Active session found for user batch: %s\n", user.Batch)
 		return true // Active session found
 	}
 
@@ -107,6 +129,17 @@ func (h *QuizHandler) GetQuizzesBySubject(w http.ResponseWriter, r *http.Request
 	// Students only see published quizzes
 	if user.Role == models.RoleStudent {
 		query = query.Where("status = ?", models.QuizStatusPublished)
+	}
+
+	// Filter by batch if user has a batch
+	if user.Role == models.RoleStudent && user.Batch != "" {
+		fmt.Printf("DEBUG: User %s (batch: %s) filtering quizzes by batch\n", user.ID, user.Batch)
+		// Students with batches can only see quizzes for their specific batch
+		query = query.Where("batch = ?", user.Batch)
+	} else if user.Role == models.RoleStudent {
+		fmt.Printf("DEBUG: User %s has no batch, showing only global quizzes\n", user.ID)
+		// Students without batches can only see quizzes without batch restrictions
+		query = query.Where("batch = '' OR batch IS NULL")
 	}
 
 	if err := query.Preload("Subject").Find(&quizzes).Error; err != nil {
@@ -140,8 +173,17 @@ func (h *QuizHandler) GetQuiz(w http.ResponseWriter, r *http.Request) {
 		query = query.Where("status = ?", models.QuizStatusPublished)
 	}
 
+	// CRITICAL: Add batch filtering for individual quiz access
+	if user.Role == models.RoleStudent && user.Batch != "" {
+		// Students with batches can only access quizzes for their specific batch
+		query = query.Where("batch = ?", user.Batch)
+	} else if user.Role == models.RoleStudent {
+		// Students without batches can only access quizzes without batch restrictions
+		query = query.Where("batch = '' OR batch IS NULL")
+	}
+
 	if err := query.Preload("Subject").First(&quiz).Error; err != nil {
-		utils.RespondError(w, http.StatusNotFound, "Quiz not found")
+		utils.RespondError(w, http.StatusNotFound, "Quiz not found or access denied")
 		return
 	}
 
@@ -183,6 +225,7 @@ func (h *QuizHandler) CreateQuiz(w http.ResponseWriter, r *http.Request) {
 		AllowedTime:     req.AllowedTime,
 		RandomizeOrder:  req.RandomizeOrder,
 		Status:          models.QuizStatusDraft,
+		Batch:           req.Batch,
 	}
 
 	if err := database.DB.Create(&quiz).Error; err != nil {
@@ -231,7 +274,8 @@ func (h *QuizHandler) UpdateQuiz(w http.ResponseWriter, r *http.Request) {
 	quiz.TimePerQuestion = req.TimePerQuestion
 	quiz.AllowedTime = req.AllowedTime
 	quiz.RandomizeOrder = req.RandomizeOrder
-	
+	quiz.Batch = req.Batch
+
 	if req.Status != "" {
 		quiz.Status = models.QuizStatus(req.Status)
 	}

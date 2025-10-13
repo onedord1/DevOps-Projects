@@ -38,6 +38,7 @@ export interface Quiz {
   allowed_time?: number;
   randomize_order: boolean;
   status: QuizStatus;
+  batch?: string;
   created_at: string;
   updated_at: string;
   subject?: Subject;

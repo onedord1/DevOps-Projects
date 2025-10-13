@@ -24,6 +24,7 @@ export const CreateQuiz: React.FC = () => {
     time_per_question: 60,
     allowed_time: 3600,
     randomize_order: false,
+    batch: '',
   });
 
   useEffect(() => {
@@ -57,6 +58,7 @@ export const CreateQuiz: React.FC = () => {
         time_per_question: formData.time_per_question,
         allowed_time: formData.allowed_time,
         randomize_order: formData.randomize_order,
+        batch: formData.batch || "",
         status: 'draft',
       });
       
@@ -109,6 +111,19 @@ export const CreateQuiz: React.FC = () => {
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                   placeholder="Quiz description"
                 />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700">Batch Restriction</label>
+                <Input
+                  value={formData.batch}
+                  onChange={(e) => setFormData({ ...formData, batch: e.target.value.toUpperCase() })}
+                  placeholder="Enter batch letter (e.g., A, B, C, D, E) or leave empty"
+                  maxLength={1}
+                />
+                <p className="text-xs text-gray-500">
+                  Enter a single letter (A-E) to restrict quiz to that batch only
+                </p>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

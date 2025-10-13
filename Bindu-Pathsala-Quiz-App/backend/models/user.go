@@ -22,7 +22,7 @@ type User struct {
 	Email        string    `gorm:"type:varchar(255);uniqueIndex" json:"email"`
 	PasswordHash string    `gorm:"type:varchar(255);not null" json:"-"`
 	Role         UserRole  `gorm:"type:user_role;default:'student'" json:"role"`
-	Batch        *string   `gorm:"type:varchar(100)" json:"batch"` // nullable, for students only
+	Batch        string    `gorm:"type:varchar(100)" json:"batch"` // for students only
 	CreatedAt    time.Time `gorm:"default:CURRENT_TIMESTAMP" json:"created_at"`
 	UpdatedAt    time.Time `gorm:"default:CURRENT_TIMESTAMP" json:"updated_at"`
 
@@ -61,7 +61,7 @@ type UserResponse struct {
 	Name      string    `json:"name"`
 	Email     string    `json:"email"`
 	Role      UserRole  `json:"role"`
-	Batch     *string   `json:"batch"`
+	Batch     string    `json:"batch"`
 	CreatedAt time.Time `json:"created_at"`
 }
 

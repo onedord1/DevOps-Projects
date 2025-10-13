@@ -25,7 +25,7 @@ type RegisterRequest struct {
 	Name      string  `json:"name"`
 	Email     string  `json:"email"`
 	Password  string  `json:"password"`
-	Batch     *string `json:"batch"` // optional batch assignment
+	Batch     string  `json:"batch"` // optional batch assignment
 }
 
 type LoginRequest struct {

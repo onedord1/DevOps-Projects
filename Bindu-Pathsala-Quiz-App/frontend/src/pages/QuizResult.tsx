@@ -7,11 +7,13 @@ import { Alert, AlertDescription } from '@/components/ui/Alert';
 import { attemptAPI } from '@/services/api';
 import { QuizAttemptWithDetails } from '@/types';
 import { formatDateTime } from '@/lib/utils';
+import { useAuth } from '@/contexts/AuthContext';
 import { CheckCircle, XCircle, Home, Loader2, Award, Clock, FileText } from 'lucide-react';
 
 export const QuizResult: React.FC = () => {
   const { attemptId } = useParams<{ attemptId: string }>();
   const navigate = useNavigate();
+  const { isAdmin } = useAuth();
   const [result, setResult] = useState<QuizAttemptWithDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -196,11 +198,11 @@ export const QuizResult: React.FC = () => {
 
         {/* Action Buttons */}
         <div className="mt-8 flex justify-center space-x-4">
-          <Button onClick={() => navigate('/dashboard')} variant="outline">
+          <Button onClick={() => navigate(isAdmin ? '/admin' : '/dashboard')} variant="outline">
             <Home className="h-4 w-4 mr-2" />
             Back to Dashboard
           </Button>
-          <Button onClick={() => navigate('/my-attempts')}>
+          <Button onClick={() => navigate(isAdmin ? '/admin/attempts' : '/my-attempts')}>
             View All Attempts
           </Button>
         </div>
