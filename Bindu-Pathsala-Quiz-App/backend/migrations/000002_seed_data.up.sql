@@ -1,7 +1,7 @@
--- Insert admin user (password: admin123)
+-- Insert admin user (password: Admin123)
 -- Password hash generated with bcrypt for 'admin123'
 INSERT INTO users (id, student_id, name, email, password_hash, role) VALUES
-('00000000-0000-0000-0000-000000000001', 'ADMIN001', 'System Administrator', 'admin@quiz.com', '$2a$10$8K1p/a0dL3.I/pYYXqG4qOX9QYVqKYOYV5ZK5wKZ7h9YqO1xN.Wli', 'admin');
+('00000000-0000-0000-0000-000000000001', 'AD123456', 'System Administrator', 'admin@quiz.com', '$2a$12$qPxL8zK9mR4vL7nM2pQ8rT5uV0wX1yN3oP4kL5jH6mQ7rS8tU9vB0', 'admin');
 
 -- Insert sample students (password: student123)
 -- Password hash generated with bcrypt for 'student123'

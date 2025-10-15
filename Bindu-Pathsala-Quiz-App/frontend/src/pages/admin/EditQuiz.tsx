@@ -24,7 +24,7 @@ export const EditQuiz: React.FC = () => {
   const [showEditQuiz, setShowEditQuiz] = useState(false);
   const [newQuestion, setNewQuestion] = useState({
     text: '',
-    time_limit: 60,
+    time_limit: 0,  // Changed from 60 to 0 for consistency
     options: [
       { text: '', is_correct: false },
       { text: '', is_correct: false },
@@ -41,6 +41,8 @@ export const EditQuiz: React.FC = () => {
     title: '',
     description: '',
     batch: '',
+    time_per_question: 0,  // Start with 0, not default values
+    allowed_time: 0,       // Start with 0, not default values
   });
 
   useEffect(() => {
@@ -60,12 +62,16 @@ export const EditQuiz: React.FC = () => {
       setQuiz(quizData);
       setQuestions(questionsData);
       setSessions(sessionsData);
-      // Initialize edit form data
-      setEditQuizData({
-        title: quizData.title,
-        description: quizData.description,
-        batch: quizData.batch || '',
-      });
+      // Initialize edit form data - only if not currently editing
+      if (!showEditQuiz) {
+        setEditQuizData({
+          title: quizData.title,
+          description: quizData.description,
+          batch: quizData.batch || '',
+          time_per_question: quizData.time_per_question || 0,
+          allowed_time: quizData.allowed_time || 0,
+        });
+      }
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to load quiz');
     } finally {
@@ -103,7 +109,7 @@ export const EditQuiz: React.FC = () => {
       setShowAddQuestion(false);
       setNewQuestion({
         text: '',
-        time_limit: 60,
+        time_limit: 0,  // Changed from 60 to 0 for consistency
         options: [
           { text: '', is_correct: false },
           { text: '', is_correct: false },
@@ -180,6 +186,20 @@ export const EditQuiz: React.FC = () => {
     }
   };
 
+  const handleEditQuizToggle = () => {
+    setShowEditQuiz(!showEditQuiz);
+    if (!showEditQuiz) {
+      // When opening edit form, load current quiz data
+      setEditQuizData({
+        title: quiz?.title || '',
+        description: quiz?.description || '',
+        batch: quiz?.batch || '',
+        time_per_question: quiz?.time_per_question || 0,
+        allowed_time: quiz?.allowed_time || 0,
+      });
+    }
+  };
+
   const handleEditQuiz = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
@@ -190,6 +210,8 @@ export const EditQuiz: React.FC = () => {
         title: editQuizData.title,
         description: editQuizData.description,
         batch: editQuizData.batch || "",
+        time_per_question: editQuizData.time_per_question > 0 ? editQuizData.time_per_question : null,
+        allowed_time: editQuizData.allowed_time > 0 ? editQuizData.allowed_time : null,
       });
 
       setSuccess('Quiz updated successfully!');
@@ -260,7 +282,7 @@ export const EditQuiz: React.FC = () => {
           <div className="flex gap-2">
             <Button
               variant="outline"
-              onClick={() => setShowEditQuiz(!showEditQuiz)}
+              onClick={handleEditQuizToggle}
             >
               <Edit className="h-4 w-4 mr-2" />
               {showEditQuiz ? 'Cancel Edit' : 'Edit Quiz'}
@@ -284,13 +306,17 @@ export const EditQuiz: React.FC = () => {
           <Card>
             <CardContent className="pt-6">
               <div className="text-sm text-gray-600">Time Allowed</div>
-              <div className="text-2xl font-bold">{(quiz?.allowed_time || 0) / 60} min</div>
+              <div className="text-2xl font-bold">
+                {quiz?.allowed_time && quiz.allowed_time > 0 ? `${Math.floor(quiz.allowed_time / 60)} min` : 'No limit'}
+              </div>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="pt-6">
               <div className="text-sm text-gray-600">Time per Question</div>
-              <div className="text-2xl font-bold">{quiz?.time_per_question || 0} sec</div>
+              <div className="text-2xl font-bold">
+                {quiz?.time_per_question && quiz.time_per_question > 0 ? `${quiz.time_per_question} sec` : 'No limit'}
+              </div>
             </CardContent>
           </Card>
         </div>
@@ -334,6 +360,24 @@ export const EditQuiz: React.FC = () => {
                   </p>
                 </div>
 
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-700">Average Time per Question</label>
+                    <div className="text-lg font-semibold text-blue-600 bg-blue-50 p-3 rounded">
+                      {quiz?.time_per_question && quiz.time_per_question > 0 ? `${quiz.time_per_question} sec` : 'Not calculated yet'}
+                    </div>
+                    <p className="text-xs text-gray-500">Calculated as total time ÷ number of questions</p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-700">Total Time Allowed</label>
+                    <div className="text-lg font-semibold text-green-600 bg-green-50 p-3 rounded">
+                      {quiz?.allowed_time && quiz.allowed_time > 0 ? `${Math.floor(quiz.allowed_time / 60)} min` : 'Not calculated yet'}
+                    </div>
+                    <p className="text-xs text-gray-500">Sum of all individual question time limits</p>
+                  </div>
+                </div>
+
                 <div className="flex gap-4">
                   <Button type="submit" disabled={saving}>
                     {saving ? 'Saving...' : 'Save Changes'}
@@ -341,7 +385,7 @@ export const EditQuiz: React.FC = () => {
                   <Button
                     type="button"
                     variant="outline"
-                    onClick={() => setShowEditQuiz(false)}
+                    onClick={handleEditQuizToggle}
                   >
                     Cancel
                   </Button>

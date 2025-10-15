@@ -5,7 +5,49 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Alert, AlertDescription } from '@/components/ui/Alert';
-import { BookOpen } from 'lucide-react';
+import { BookOpen, Eye, EyeOff } from 'lucide-react';
+
+// Validation functions
+const validateStudentId = (studentId: string): { isValid: boolean; error?: string } => {
+  // Check if it starts with BP followed by numbers
+  const studentIdRegex = /^BP\d+$/;
+  if (!studentIdRegex.test(studentId)) {
+    return {
+      isValid: false,
+      error: 'Student ID must start with "BP" followed by numbers only (e.g., BP123456)'
+    };
+  }
+  return { isValid: true };
+};
+
+const validatePassword = (password: string): { isValid: boolean; error?: string } => {
+  // Check if password is 8 characters, contains letters and numbers, first letter is capital
+  if (password.length !== 8) {
+    return {
+      isValid: false,
+      error: 'Password must be exactly 8 characters long'
+    };
+  }
+
+  const hasLetter = /[a-zA-Z]/.test(password);
+  const hasNumber = /\d/.test(password);
+
+  if (!hasLetter || !hasNumber) {
+    return {
+      isValid: false,
+      error: 'Password must contain both letters and numbers'
+    };
+  }
+
+  if (!/^[A-Z]/.test(password)) {
+    return {
+      isValid: false,
+      error: 'Password must start with a capital letter'
+    };
+  }
+
+  return { isValid: true };
+};
 
 export const Register: React.FC = () => {
   const [studentId, setStudentId] = useState('');
@@ -13,6 +55,8 @@ export const Register: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [batch, setBatch] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -23,13 +67,22 @@ export const Register: React.FC = () => {
     e.preventDefault();
     setError('');
 
-    if (password !== confirmPassword) {
-      setError('Passwords do not match');
+    // Validate Student ID
+    const idValidation = validateStudentId(studentId);
+    if (!idValidation.isValid) {
+      setError(idValidation.error!);
       return;
     }
 
-    if (password.length < 6) {
-      setError('Password must be at least 6 characters');
+    // Validate password
+    const passwordValidation = validatePassword(password);
+    if (!passwordValidation.isValid) {
+      setError(passwordValidation.error!);
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      setError('Passwords do not match');
       return;
     }
 
@@ -85,7 +138,7 @@ export const Register: React.FC = () => {
                   type="text"
                   placeholder="Enter your student ID"
                   value={studentId}
-                  onChange={(e) => setStudentId(e.target.value)}
+                  onChange={(e) => setStudentId(e.target.value.toUpperCase())}
                   required
                 />
               </div>
@@ -140,28 +193,48 @@ export const Register: React.FC = () => {
                 <label htmlFor="password" className="text-sm font-medium text-gray-700">
                   Password
                 </label>
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder="Enter your password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                />
+                <div className="relative">
+                  <Input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    placeholder="Enter your password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    className="pr-12"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700 transition-colors"
+                  >
+                    {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                  </button>
+                </div>
               </div>
 
               <div className="space-y-2">
                 <label htmlFor="confirmPassword" className="text-sm font-medium text-gray-700">
                   Confirm Password
                 </label>
-                <Input
-                  id="confirmPassword"
-                  type="password"
-                  placeholder="Confirm your password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  required
-                />
+                <div className="relative">
+                  <Input
+                    id="confirmPassword"
+                    type={showConfirmPassword ? "text" : "password"}
+                    placeholder="Confirm your password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    required
+                    className="pr-12"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700 transition-colors"
+                  >
+                    {showConfirmPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                  </button>
+                </div>
               </div>
 
               <Button type="submit" className="w-full" disabled={loading}>

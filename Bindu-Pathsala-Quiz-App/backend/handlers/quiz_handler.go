@@ -59,22 +59,35 @@ func isQuizAvailableForUser(quiz *models.Quiz, user *models.User) bool {
 		return false // User has already submitted this quiz
 	}
 
-	// For published quizzes, check batch restrictions
+	// For published quizzes, check batch restrictions and sessions
 	if quiz.Status == models.QuizStatusPublished {
-		// If quiz has a batch restriction, check if user is in that batch
+		// If quiz has a batch restriction, check if user is in that batch OR if there's an active session for user's batch
 		if quiz.Batch != "" {
 			// Quiz is restricted to a specific batch
 			if user.Batch == "" {
 				// User has no batch, cannot access batch-restricted quiz
 				fmt.Printf("DEBUG: User has no batch, cannot access batch-restricted quiz %s\n", quiz.ID)
 				return false
-			} else if user.Batch != quiz.Batch {
-				// User batch doesn't match quiz batch
-				fmt.Printf("DEBUG: User batch %s doesn't match quiz batch %s\n", user.Batch, quiz.Batch)
-				return false
+			} else if user.Batch == quiz.Batch {
+				// User batch matches quiz batch
+				fmt.Printf("DEBUG: User batch %s matches quiz batch %s\n", user.Batch, quiz.Batch)
+				return true
+			} else {
+				// User batch doesn't match quiz batch, check for active session
+				fmt.Printf("DEBUG: User batch %s doesn't match quiz batch %s, checking for active session\n", user.Batch, quiz.Batch)
+
+				var session models.QuizSession
+				err := database.DB.Where("quiz_id = ? AND batch_name = ? AND is_active = ? AND start_time <= ? AND end_time >= ?",
+					quiz.ID, user.Batch, true, now, now).First(&session).Error
+
+				if err != nil {
+					fmt.Printf("DEBUG: No active session found for user batch: %s\n", user.Batch)
+					return false
+				}
+
+				fmt.Printf("DEBUG: Active session found for user batch: %s\n", user.Batch)
+				return true // Active session found
 			}
-			// User batch matches quiz batch
-			return true
 		} else {
 			// Quiz has no batch restriction (global)
 			if user.Batch != "" {
@@ -173,17 +186,14 @@ func (h *QuizHandler) GetQuiz(w http.ResponseWriter, r *http.Request) {
 		query = query.Where("status = ?", models.QuizStatusPublished)
 	}
 
-	// CRITICAL: Add batch filtering for individual quiz access
-	if user.Role == models.RoleStudent && user.Batch != "" {
-		// Students with batches can only access quizzes for their specific batch
-		query = query.Where("batch = ?", user.Batch)
-	} else if user.Role == models.RoleStudent {
-		// Students without batches can only access quizzes without batch restrictions
-		query = query.Where("batch = '' OR batch IS NULL")
+	if err := query.Preload("Subject").First(&quiz).Error; err != nil {
+		utils.RespondError(w, http.StatusNotFound, "Quiz not found")
+		return
 	}
 
-	if err := query.Preload("Subject").First(&quiz).Error; err != nil {
-		utils.RespondError(w, http.StatusNotFound, "Quiz not found or access denied")
+	// Check if quiz is available for this user (considering sessions)
+	if user.Role == models.RoleStudent && !isQuizAvailableForUser(&quiz, user) {
+		utils.RespondError(w, http.StatusForbidden, "Quiz not found or access denied")
 		return
 	}
 
@@ -213,6 +223,14 @@ func (h *QuizHandler) CreateQuiz(w http.ResponseWriter, r *http.Request) {
 	if err := database.DB.First(&subject, req.SubjectID).Error; err != nil {
 		utils.RespondError(w, http.StatusNotFound, "Subject not found")
 		return
+	}
+
+	// Handle timing values - convert 0 to null for proper storage
+	if req.TimePerQuestion != nil && *req.TimePerQuestion == 0 {
+		req.TimePerQuestion = nil
+	}
+	if req.AllowedTime != nil && *req.AllowedTime == 0 {
+		req.AllowedTime = nil
 	}
 
 	quiz := models.Quiz{
@@ -260,21 +278,39 @@ func (h *QuizHandler) UpdateQuiz(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Update fields
+	// Handle timing values - convert 0 to null for proper storage
+	if req.TimePerQuestion != nil && *req.TimePerQuestion == 0 {
+		req.TimePerQuestion = nil
+	}
+	if req.AllowedTime != nil && *req.AllowedTime == 0 {
+		req.AllowedTime = nil
+	}
+
+	// Update fields - only update non-nil values to preserve existing data
 	if req.Title != "" {
 		quiz.Title = req.Title
 	}
-	quiz.Description = req.Description
+	if req.Description != "" {
+		quiz.Description = req.Description
+	}
 	if !req.StartTime.IsZero() {
 		quiz.StartTime = req.StartTime
 	}
 	if !req.EndTime.IsZero() {
 		quiz.EndTime = req.EndTime
 	}
-	quiz.TimePerQuestion = req.TimePerQuestion
-	quiz.AllowedTime = req.AllowedTime
-	quiz.RandomizeOrder = req.RandomizeOrder
-	quiz.Batch = req.Batch
+	if req.TimePerQuestion != nil {
+		quiz.TimePerQuestion = req.TimePerQuestion
+	}
+	if req.AllowedTime != nil {
+		quiz.AllowedTime = req.AllowedTime
+	}
+	if req.RandomizeOrder {
+		quiz.RandomizeOrder = req.RandomizeOrder
+	}
+	if req.Batch != "" {
+		quiz.Batch = req.Batch
+	}
 
 	if req.Status != "" {
 		quiz.Status = models.QuizStatus(req.Status)

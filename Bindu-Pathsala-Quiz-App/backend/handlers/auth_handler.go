@@ -128,13 +128,13 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	// Find user by student ID
 	var user models.User
 	if err := database.DB.Where("student_id = ?", req.StudentID).First(&user).Error; err != nil {
-		utils.RespondError(w, http.StatusUnauthorized, "Invalid credentials")
+		utils.RespondError(w, http.StatusUnauthorized, "Invalid student ID")
 		return
 	}
 
 	// Verify password
 	if !user.CheckPassword(req.Password) {
-		utils.RespondError(w, http.StatusUnauthorized, "Invalid credentials")
+		utils.RespondError(w, http.StatusUnauthorized, "Invalid password")
 		return
 	}
 

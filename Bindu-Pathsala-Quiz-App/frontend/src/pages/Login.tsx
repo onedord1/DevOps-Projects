@@ -5,13 +5,69 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Alert, AlertDescription } from '@/components/ui/Alert';
-import { BookOpen, GraduationCap, Sparkles } from 'lucide-react';
+import { BookOpen, GraduationCap, Sparkles, Eye, EyeOff } from 'lucide-react';
+
+// Validation functions
+const validateStudentId = (studentId: string): { isValid: boolean; error?: string } => {
+  // Check if it starts with BP followed by numbers
+  const studentIdRegex = /^BP\d+$/;
+  if (!studentIdRegex.test(studentId)) {
+    return {
+      isValid: false,
+      error: 'Student ID must start with "BP" followed by numbers only (e.g., BP123456)'
+    };
+  }
+  return { isValid: true };
+};
+
+const validateAdminId = (adminId: string): { isValid: boolean; error?: string } => {
+  // Check if it starts with AD followed by numbers
+  const adminIdRegex = /^AD\d+$/;
+  if (!adminIdRegex.test(adminId)) {
+    return {
+      isValid: false,
+      error: 'Admin ID must start with "AD" followed by numbers only (e.g., AD123456)'
+    };
+  }
+  return { isValid: true };
+};
+
+const validatePassword = (password: string): { isValid: boolean; error?: string } => {
+  // Check if password is 8 characters, contains letters and numbers, first letter is capital
+  if (password.length !== 8) {
+    return {
+      isValid: false,
+      error: 'Password must be exactly 8 characters long'
+    };
+  }
+
+  const hasLetter = /[a-zA-Z]/.test(password);
+  const hasNumber = /\d/.test(password);
+
+  if (!hasLetter || !hasNumber) {
+    return {
+      isValid: false,
+      error: 'Password must contain both letters and numbers'
+    };
+  }
+
+  if (!/^[A-Z]/.test(password)) {
+    return {
+      isValid: false,
+      error: 'Password must start with a capital letter'
+    };
+  }
+
+  return { isValid: true };
+};
 
 export const Login: React.FC = () => {
   const [studentId, setStudentId] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [shake, setShake] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
 
@@ -19,6 +75,39 @@ export const Login: React.FC = () => {
     e.preventDefault();
     setError('');
     setLoading(true);
+
+    // Validate inputs
+    const passwordValidation = validatePassword(password);
+    if (!passwordValidation.isValid) {
+      setError(passwordValidation.error!);
+      setLoading(false);
+      setShake(true);
+      setTimeout(() => setShake(false), 600);
+      return;
+    }
+
+    // Determine user type and validate ID
+    let idValidation;
+
+    if (studentId.startsWith('BP')) {
+      idValidation = validateStudentId(studentId);
+    } else if (studentId.startsWith('AD')) {
+      idValidation = validateAdminId(studentId);
+    } else {
+      setError('Invalid ID format. Student IDs must start with "BP" and Admin IDs must start with "AD"');
+      setLoading(false);
+      setShake(true);
+      setTimeout(() => setShake(false), 600);
+      return;
+    }
+
+    if (!idValidation.isValid) {
+      setError(idValidation.error!);
+      setLoading(false);
+      setShake(true);
+      setTimeout(() => setShake(false), 600);
+      return;
+    }
 
     try {
       const userData = await login(studentId, password);
@@ -29,9 +118,32 @@ export const Login: React.FC = () => {
         navigate('/dashboard');
       }
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Login failed. Please check your credentials.');
-    } finally {
       setLoading(false);
+
+      // Determine specific error message based on response
+      let errorMessage = 'Login failed. Please check your credentials.';
+
+      if (err.response?.status === 401) {
+        const serverMessage = err.response.data?.message?.toLowerCase() || '';
+
+        if (serverMessage.includes('student') && serverMessage.includes('id')) {
+          errorMessage = 'Student ID not found. Please check your Student ID or contact your administrator.';
+        } else if (serverMessage.includes('password')) {
+          errorMessage = 'Incorrect password. Please check and try again.';
+        } else {
+          errorMessage = 'Invalid credentials. Please check your Student ID and password.';
+        }
+      } else if (err.response?.status === 404) {
+        errorMessage = 'Student ID not found. Please check your Student ID or contact your administrator.';
+      } else if (err.response?.status >= 500) {
+        errorMessage = 'Server error. Please try again later or contact support.';
+      }
+
+      setError(errorMessage);
+
+      // Trigger shake animation for error feedback
+      setShake(true);
+      setTimeout(() => setShake(false), 600);
     }
   };
 
@@ -65,7 +177,7 @@ export const Login: React.FC = () => {
           <p className="text-gray-500">Sign in to continue your educational journey</p>
         </div>
 
-        <Card className="card-edu animate-fade-in-up" style={{animationDelay: '0.2s'}}>
+        <Card className={`card-edu animate-fade-in-up ${shake ? 'animate-shake' : ''}`} style={{animationDelay: '0.2s'}}>
           <CardHeader className="text-center pb-4">
             <CardTitle className="text-2xl text-blue-800 flex items-center justify-center space-x-2">
               <span>Welcome Back</span>
@@ -77,23 +189,23 @@ export const Login: React.FC = () => {
           <CardContent className="space-y-6">
             <form onSubmit={handleSubmit} className="space-y-5">
               {error && (
-                <Alert variant="destructive" className="border-red-200 bg-red-50">
-                  <AlertDescription className="text-red-800">{error}</AlertDescription>
+                <Alert variant="destructive" className="border-red-200 bg-red-50 animate-error-slide">
+                  <AlertDescription className="text-red-800 font-medium">{error}</AlertDescription>
                 </Alert>
               )}
 
               <div className="space-y-2">
                 <label htmlFor="studentId" className="text-sm font-semibold text-gray-700 flex items-center space-x-2">
-                  <span>Student ID</span>
+                  <span>User ID</span>
                 </label>
                 <Input
                   id="studentId"
                   type="text"
-                  placeholder="Enter your student ID"
+                  placeholder="Enter your user ID"
                   value={studentId}
-                  onChange={(e) => setStudentId(e.target.value)}
+                  onChange={(e) => setStudentId(e.target.value.toUpperCase())}
                   required
-                  className="h-12 border-2 border-gray-200 focus:border-blue-400 focus:ring-blue-400"
+                  className={`h-12 border-2 border-gray-200 focus:border-blue-400 focus:ring-blue-400 transition-all duration-200 ${shake ? 'animate-input-error' : ''}`}
                 />
               </div>
 
@@ -101,20 +213,29 @@ export const Login: React.FC = () => {
                 <label htmlFor="password" className="text-sm font-semibold text-gray-700 flex items-center space-x-2">
                   <span>Password</span>
                 </label>
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder="Enter your password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  className="h-12 border-2 border-gray-200 focus:border-blue-400 focus:ring-blue-400"
-                />
+                <div className="relative">
+                  <Input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    placeholder="Enter your password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    className={`h-12 border-2 border-gray-200 focus:border-blue-400 focus:ring-blue-400 transition-all duration-200 pr-12 ${shake ? 'animate-input-error' : ''}`}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700 transition-colors"
+                  >
+                    {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                  </button>
+                </div>
               </div>
 
               <Button
                 type="submit"
-                className="w-full h-12 btn-edu-primary text-lg font-semibold"
+                className="w-full h-12 btn-edu-primary text-lg font-semibold transition-all duration-200"
                 disabled={loading}
               >
                 {loading ? (

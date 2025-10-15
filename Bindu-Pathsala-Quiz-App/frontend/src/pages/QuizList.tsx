@@ -119,18 +119,30 @@ export const QuizList: React.FC = () => {
                       <div className="flex items-center text-sm text-gray-600">
                         <Clock className="h-4 w-4 mr-2 text-blue-600" />
                         <div>
-                          {quiz.allowed_time ? (
-                            <div>
-                              <div className="font-medium">Total: {Math.floor(quiz.allowed_time / 60)} minutes</div>
-                              {quiz.time_per_question && quiz.time_per_question > 0 && (
-                                <div className="text-xs">Per Q: {quiz.time_per_question}s</div>
-                              )}
-                            </div>
-                          ) : quiz.time_per_question && quiz.time_per_question > 0 ? (
-                            <div className="font-medium">{quiz.time_per_question}s per question</div>
-                          ) : (
-                            <div className="font-medium">No time limit</div>
-                          )}
+                          {(() => {
+                            const allowedTime = quiz.allowed_time;
+                            const timePerQuestion = quiz.time_per_question;
+
+                            // Handle different timing scenarios
+                            if (allowedTime && allowedTime > 0) {
+                              return (
+                                <div>
+                                  <div className="font-medium">Total: {Math.floor(allowedTime / 60)} minutes</div>
+                                  {timePerQuestion && timePerQuestion > 0 && (
+                                    <div className="text-xs">Per Q: {timePerQuestion}s</div>
+                                  )}
+                                </div>
+                              );
+                            } else if (timePerQuestion && timePerQuestion > 0) {
+                              return (
+                                <div className="font-medium">{timePerQuestion}s per question</div>
+                              );
+                            } else {
+                              return (
+                                <div className="font-medium text-orange-600">No time limit</div>
+                              );
+                            }
+                          })()}
                         </div>
                       </div>
                     </div>
@@ -215,18 +227,30 @@ export const QuizList: React.FC = () => {
                       <div className="flex items-center text-sm text-gray-600">
                         <Clock className="h-4 w-4 mr-2 text-blue-600" />
                         <div>
-                          {quiz.allowed_time ? (
-                            <div>
-                              <div className="font-medium">Total: {Math.floor(quiz.allowed_time / 60)} minutes</div>
-                              {quiz.time_per_question && quiz.time_per_question > 0 && (
-                                <div className="text-xs">Per Q: {quiz.time_per_question}s</div>
-                              )}
-                            </div>
-                          ) : quiz.time_per_question && quiz.time_per_question > 0 ? (
-                            <div className="font-medium">{quiz.time_per_question}s per question</div>
-                          ) : (
-                            <div className="font-medium">No time limit</div>
-                          )}
+                          {(() => {
+                            const allowedTime = quiz.allowed_time;
+                            const timePerQuestion = quiz.time_per_question;
+
+                            // Handle different timing scenarios
+                            if (allowedTime && allowedTime > 0) {
+                              return (
+                                <div>
+                                  <div className="font-medium">Total: {Math.floor(allowedTime / 60)} minutes</div>
+                                  {timePerQuestion && timePerQuestion > 0 && (
+                                    <div className="text-xs">Per Q: {timePerQuestion}s</div>
+                                  )}
+                                </div>
+                              );
+                            } else if (timePerQuestion && timePerQuestion > 0) {
+                              return (
+                                <div className="font-medium">{timePerQuestion}s per question</div>
+                              );
+                            } else {
+                              return (
+                                <div className="font-medium text-orange-600">No time limit</div>
+                              );
+                            }
+                          })()}
                         </div>
                       </div>
                     </div>

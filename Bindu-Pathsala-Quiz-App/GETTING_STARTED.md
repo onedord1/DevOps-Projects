@@ -405,7 +405,7 @@ If you encounter issues:
 
 | Role | Student ID | Password |
 |------|-----------|----------|
-| Admin | ADMIN001 | admin123 |
+| Admin | AD123456 | Admin123 |
 | Student | STU001 | student123 |
 | Student | STU002 | student123 |
 | Student | STU003 | student123 |

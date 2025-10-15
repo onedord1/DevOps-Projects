@@ -36,6 +36,47 @@ type UpdateQuestionRequest struct {
 }
 
 // CreateQuestion creates a new question with options (Admin only)
+// recalculateQuizTiming recalculates quiz timing based on individual question time limits
+func recalculateQuizTiming(quizID uuid.UUID) error {
+	var quiz models.Quiz
+	if err := database.DB.First(&quiz, quizID).Error; err != nil {
+		return err
+	}
+
+	var count int64
+	database.DB.Model(&models.Question{}).Where("quiz_id = ?", quiz.ID).Count(&count)
+	quiz.TotalQuestions = int(count)
+
+	// Recalculate timing based on individual question time limits
+	var totalTime int = 0
+	var questionsWithTime int = 0
+	var avgTimePerQuestion int = 0
+
+	rows, err := database.DB.Model(&models.Question{}).Where("quiz_id = ?", quiz.ID).Select("time_limit").Rows()
+	if err == nil {
+		defer rows.Close()
+		for rows.Next() {
+			var timeLimit *int
+			rows.Scan(&timeLimit)
+			if timeLimit != nil {
+				totalTime += *timeLimit
+				questionsWithTime++
+			}
+		}
+	}
+
+	if questionsWithTime > 0 {
+		avgTimePerQuestion = totalTime / questionsWithTime
+		quiz.AllowedTime = &totalTime
+		quiz.TimePerQuestion = &avgTimePerQuestion
+	} else {
+		quiz.AllowedTime = nil
+		quiz.TimePerQuestion = nil
+	}
+
+	return database.DB.Save(&quiz).Error
+}
+
 func (h *QuestionHandler) CreateQuestion(w http.ResponseWriter, r *http.Request) {
 	var req CreateQuestionRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -98,11 +139,8 @@ func (h *QuestionHandler) CreateQuestion(w http.ResponseWriter, r *http.Request)
 		}
 	}
 
-	// Update quiz total_questions count
-	var count int64
-	database.DB.Model(&models.Question{}).Where("quiz_id = ?", quiz.ID).Count(&count)
-	quiz.TotalQuestions = int(count)
-	database.DB.Save(&quiz)
+	// Update quiz total_questions count and recalculate timing
+	recalculateQuizTiming(quiz.ID)
 
 	// Load options for response
 	database.DB.Preload("Options").First(&question, question.ID)
@@ -174,6 +212,9 @@ func (h *QuestionHandler) UpdateQuestion(w http.ResponseWriter, r *http.Request)
 		}
 	}
 
+	// Recalculate quiz timing after question update
+	recalculateQuizTiming(question.QuizID)
+
 	// Load options for response
 	database.DB.Preload("Options").First(&question, question.ID)
 
@@ -202,14 +243,8 @@ func (h *QuestionHandler) DeleteQuestion(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	// Update quiz total_questions count
-	var quiz models.Quiz
-	if database.DB.First(&quiz, quizID).Error == nil {
-		var count int64
-		database.DB.Model(&models.Question{}).Where("quiz_id = ?", quizID).Count(&count)
-		quiz.TotalQuestions = int(count)
-		database.DB.Save(&quiz)
-	}
+	// Update quiz total_questions count and recalculate timing
+	recalculateQuizTiming(quizID)
 
 	utils.RespondSuccess(w, http.StatusOK, nil, "Question deleted successfully")
 }

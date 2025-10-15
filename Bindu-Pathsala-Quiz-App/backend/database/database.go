@@ -84,16 +84,16 @@ func Close() error {
 	return sqlDB.Close()
 }
 
-// ResetAdminPassword resets the admin user's password to 'admin123'
+// ResetAdminPassword resets the admin user's password to 'Admin123'
 func ResetAdminPassword(db *gorm.DB) error {
-	// Hash the password 'admin123'
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte("admin123"), bcrypt.DefaultCost)
+	// Generate bcrypt hash for Admin123
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte("Admin123"), bcrypt.DefaultCost)
 	if err != nil {
 		return fmt.Errorf("failed to hash password: %w", err)
 	}
 
 	// Update admin user's password
-	result := db.Model(&models.User{}).Where("student_id = ?", "ADMIN001").Update("password_hash", string(hashedPassword))
+	result := db.Model(&models.User{}).Where("student_id = ?", "AD123456").Update("password_hash", string(hashedPassword))
 	if result.Error != nil {
 		return fmt.Errorf("failed to update admin password: %w", result.Error)
 	}
@@ -102,7 +102,7 @@ func ResetAdminPassword(db *gorm.DB) error {
 		return fmt.Errorf("admin user not found")
 	}
 
-	log.Println("Admin password reset to 'admin123' successfully")
+	log.Println("Admin password reset to 'Admin123' successfully")
 	return nil
 }
 

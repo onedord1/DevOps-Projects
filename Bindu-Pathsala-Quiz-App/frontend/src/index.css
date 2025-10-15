@@ -172,6 +172,51 @@
     animation: pulse-glow 2s ease-in-out infinite;
   }
 
+  /* Beautiful error animations */
+  @keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    10%, 30%, 50%, 70%, 90% { transform: translateX(-4px); }
+    20%, 40%, 60%, 80% { transform: translateX(4px); }
+  }
+
+  @keyframes error-slide {
+    0% {
+      opacity: 0;
+      transform: translateY(-10px) scale(0.95);
+    }
+    100% {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+
+  @keyframes input-error {
+    0% {
+      border-color: hsl(var(--destructive));
+      box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.2);
+    }
+    50% {
+      border-color: hsl(var(--destructive));
+      box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.3);
+    }
+    100% {
+      border-color: hsl(var(--destructive));
+      box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.2);
+    }
+  }
+
+  .animate-shake {
+    animation: shake 0.6s ease-in-out;
+  }
+
+  .animate-error-slide {
+    animation: error-slide 0.3s ease-out;
+  }
+
+  .animate-input-error {
+    animation: input-error 0.6s ease-in-out;
+  }
+
   /* Educational icons */
   .icon-edu {
     @apply text-blue-600 drop-shadow-sm;

@@ -21,8 +21,8 @@ export const CreateQuiz: React.FC = () => {
     start_time: '',
     end_time: '',
     total_questions: 0,
-    time_per_question: 60,
-    allowed_time: 3600,
+    time_per_question: 0,  // Calculated field, initially 0
+    allowed_time: 0,       // Calculated field, initially 0
     randomize_order: false,
     batch: '',
   });
@@ -55,8 +55,8 @@ export const CreateQuiz: React.FC = () => {
         start_time: new Date(formData.start_time).toISOString(),
         end_time: new Date(formData.end_time).toISOString(),
         total_questions: formData.total_questions,
-        time_per_question: formData.time_per_question,
-        allowed_time: formData.allowed_time,
+        time_per_question: formData.time_per_question > 0 ? formData.time_per_question : null,
+        allowed_time: formData.allowed_time > 0 ? formData.allowed_time : null,
         randomize_order: formData.randomize_order,
         batch: formData.batch || "",
         status: 'draft',
@@ -148,27 +148,7 @@ export const CreateQuiz: React.FC = () => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-700">Time per Question (seconds)</label>
-                  <Input
-                    type="number"
-                    value={formData.time_per_question}
-                    onChange={(e) => setFormData({ ...formData, time_per_question: parseInt(e.target.value) })}
-                    min="10"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-700">Total Time Allowed (seconds)</label>
-                  <Input
-                    type="number"
-                    value={formData.allowed_time}
-                    onChange={(e) => setFormData({ ...formData, allowed_time: parseInt(e.target.value) })}
-                    min="60"
-                  />
-                </div>
-
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-gray-700">Total Questions</label>
                   <Input
@@ -177,6 +157,15 @@ export const CreateQuiz: React.FC = () => {
                     onChange={(e) => setFormData({ ...formData, total_questions: parseInt(e.target.value) })}
                     min="1"
                   />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-700">Timing</label>
+                  <div className="text-sm text-gray-600 bg-gray-50 p-3 rounded">
+                    <p>• Total Time: Calculated automatically when questions are added</p>
+                    <p>• Average Time per Question: Calculated as total time ÷ number of questions</p>
+                    <p>• Individual question timing: Set when adding questions</p>
+                  </div>
                 </div>
               </div>
 

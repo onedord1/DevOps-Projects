@@ -1,5 +1,22 @@
+# Environment files
+.env
+.env.local
+.env.*.local
 
+# Backend
+backend/main
+backend/quiz-api
+backend/*.exe
+backend/*.test
+backend/*.out
+
+# Frontend
 frontend/node_modules/
+frontend/dist/
+frontend/build/
+frontend/.DS_Store
+frontend/.vite
+frontend/.cache
 
 # IDEs
 .vscode/
@@ -16,8 +33,15 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
+# Database
+*.sql
+*.db
+
 # Docker
 docker-compose.override.yml
+
+# Backups
+backup_*.sql
 
 # OS
 Thumbs.db
