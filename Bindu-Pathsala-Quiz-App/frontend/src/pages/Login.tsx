@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -33,11 +33,11 @@ const validateAdminId = (adminId: string): { isValid: boolean; error?: string } 
 };
 
 const validatePassword = (password: string): { isValid: boolean; error?: string } => {
-  // Check if password is 8 characters, contains letters and numbers, first letter is capital
-  if (password.length !== 8) {
+  // Check if password is at least 8 characters, contains letters and numbers, first letter is capital
+  if (password.length < 8) {
     return {
       isValid: false,
-      error: 'Password must be exactly 8 characters long'
+      error: 'Password must be at least 8 characters long'
     };
   }
 
@@ -66,14 +66,28 @@ export const Login: React.FC = () => {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
   const [shake, setShake] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // Check for messages from navigation state
+  React.useEffect(() => {
+    if (location.state?.message) {
+      if (location.state.type === 'info') {
+        setSuccess(location.state.message);
+      } else {
+        setError(location.state.message);
+      }
+    }
+  }, [location.state]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setSuccess('');
     setLoading(true);
 
     // Validate inputs
@@ -111,6 +125,20 @@ export const Login: React.FC = () => {
 
     try {
       const userData = await login(studentId, password);
+
+      // Check user status for students
+      if (userData.role === 'student' && userData.status === 'pending') {
+        setError('Account is not activated yet. Please contact your administrator for access.');
+        setLoading(false);
+        return;
+      }
+
+      if (userData.role === 'student' && userData.status === 'rejected') {
+        setError('Your account has been rejected. Please contact your administrator for assistance.');
+        setLoading(false);
+        return;
+      }
+
       // Redirect based on user role
       if (userData.role === 'admin') {
         navigate('/admin');
@@ -191,6 +219,12 @@ export const Login: React.FC = () => {
               {error && (
                 <Alert variant="destructive" className="border-red-200 bg-red-50 animate-error-slide">
                   <AlertDescription className="text-red-800 font-medium">{error}</AlertDescription>
+                </Alert>
+              )}
+
+              {success && (
+                <Alert className="border-green-200 bg-green-50 animate-fade-in">
+                  <AlertDescription className="text-green-800 font-medium">{success}</AlertDescription>
                 </Alert>
               )}
 

@@ -10,7 +10,7 @@ import type {
   Answer,
   QuizSession,
   ApiResponse,
-  ApiError,
+  StudentStats,
 } from '@/types';
 
 const API_URL = (import.meta as any).env?.VITE_API_URL || 'http://localhost:8080/api';
@@ -34,7 +34,7 @@ api.interceptors.request.use((config) => {
 // Response interceptor to handle errors
 api.interceptors.response.use(
   (response) => response,
-  (error: AxiosError<ApiError>) => {
+  (error: AxiosError) => {
     if (error.response?.status === 401 && !error.config?.url?.includes('/auth/login')) {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
@@ -60,13 +60,22 @@ export const authAPI = {
     const response = await api.get<ApiResponse<User>>('/auth/me');
     return response.data.data!;
   },
+
+  health: async () => {
+    try {
+      const response = await axios.get(`${API_URL.replace('/api', '')}/health`);
+      return response.status === 200;
+    } catch (error) {
+      return false;
+    }
+  },
 };
 
 // Subject API
 export const subjectAPI = {
   getAll: async () => {
-    const response = await api.get<ApiResponse<Subject[]>>('/subjects');
-    return response.data.data!;
+    const response = await api.get<ApiResponse<any[]>>('/subjects');
+    return response.data.data! as Subject[];
   },
 
   getById: async (id: string) => {
@@ -239,6 +248,56 @@ export const sessionAPI = {
 
   delete: async (id: string) => {
     await api.delete(`/admin/sessions/${id}`);
+  },
+};
+
+// Student Management API (Admin only)
+export const studentAPI = {
+  getAll: async (params?: { status?: string; batch?: string }) => {
+    const searchParams = new URLSearchParams();
+    if (params?.status) searchParams.append('status', params.status);
+    if (params?.batch) searchParams.append('batch', params.batch);
+
+    const query = searchParams.toString();
+    const response = await api.get<ApiResponse<User[]>>(`/admin/students${query ? `?${query}` : ''}`);
+    return response.data.data!;
+  },
+
+  getStats: async () => {
+    const response = await api.get<ApiResponse<StudentStats>>('/admin/students/stats');
+    return response.data.data!;
+  },
+
+  getById: async (id: string) => {
+    const response = await api.get<ApiResponse<User>>(`/admin/students/${id}`);
+    return response.data.data!;
+  },
+
+  approve: async (id: string) => {
+    const response = await api.put<ApiResponse<User>>(`/admin/students/${id}/approve`);
+    return response.data.data!;
+  },
+
+  reject: async (id: string) => {
+    const response = await api.put<ApiResponse<User>>(`/admin/students/${id}/reject`);
+    return response.data.data!;
+  },
+
+  revokeRejection: async (id: string) => {
+    const response = await api.put<ApiResponse<User>>(`/admin/students/${id}/revoke-rejection`);
+    return response.data.data!;
+  },
+
+  delete: async (id: string) => {
+    const response = await api.delete<ApiResponse<void>>(`/admin/students/${id}`);
+    return response.data;
+  },
+
+  updatePassword: async (id: string, newPassword: string) => {
+    const response = await api.put<ApiResponse<void>>(`/admin/students/${id}/password`, {
+      new_password: newPassword,
+    });
+    return response.data;
   },
 };
 

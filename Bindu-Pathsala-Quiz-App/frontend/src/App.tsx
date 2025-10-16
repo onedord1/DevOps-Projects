@@ -1,4 +1,3 @@
-import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { QuizProvider } from '@/contexts/QuizContext';
@@ -10,12 +9,15 @@ import { QuizList } from '@/pages/QuizList';
 import { QuizTaking } from '@/pages/QuizTaking';
 import { QuizResult } from '@/pages/QuizResult';
 import { MyAttempts } from '@/pages/MyAttempts';
+import StudentProfile from '@/pages/StudentProfile';
+import AdminProfile from '@/pages/AdminProfile';
 import { AdminDashboard } from '@/pages/admin/AdminDashboard';
 import { ManageSubjects } from '@/pages/admin/ManageSubjects';
 import { ManageQuizzes } from '@/pages/admin/ManageQuizzes';
 import { ViewResults } from '@/pages/admin/ViewResults';
 import { CreateQuiz } from '@/pages/admin/CreateQuiz';
 import { EditQuiz } from '@/pages/admin/EditQuiz';
+import { StudentAllowance } from '@/pages/admin/StudentAllowance';
 
 function App() {
   return (
@@ -68,6 +70,38 @@ function App() {
                 </ProtectedRoute>
               }
             />
+            <Route
+              path="/profile"
+              element={
+                <ProtectedRoute>
+                  <StudentProfile />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/profile"
+              element={
+                <ProtectedRoute requireAdmin>
+                  <AdminProfile />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/profile/overview"
+              element={
+                <ProtectedRoute requireAdmin>
+                  <AdminProfile />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/profile/password"
+              element={
+                <ProtectedRoute requireAdmin>
+                  <AdminProfile />
+                </ProtectedRoute>
+              }
+            />
 
             {/* Protected Admin Routes */}
             <Route
@@ -75,6 +109,14 @@ function App() {
               element={
                 <ProtectedRoute requireAdmin>
                   <AdminDashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/students"
+              element={
+                <ProtectedRoute requireAdmin>
+                  <StudentAllowance />
                 </ProtectedRoute>
               }
             />

@@ -76,6 +76,8 @@ func AuthMiddleware(jwtSecret string) func(http.Handler) http.Handler {
 				StudentID: getStringClaim(claims, "student_id"),
 				Name:      getStringClaim(claims, "name"),
 				Email:     getStringClaim(claims, "email"), // Email may be missing from old tokens
+				Phone:     getStringClaim(claims, "phone"),
+				Address:   getStringClaim(claims, "address"),
 				Role:      models.UserRole(getStringClaim(claims, "role")),
 				Batch:     getStringClaim(claims, "batch"), // Extract batch from JWT token (may be nil for old tokens)
 			}

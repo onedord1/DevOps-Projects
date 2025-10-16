@@ -22,6 +22,7 @@ func SetupRouter(cfg *config.Config) http.Handler {
 	questionHandler := handlers.NewQuestionHandler()
 	attemptHandler := handlers.NewAttemptHandler()
 	sessionHandler := handlers.NewSessionHandler()
+	studentHandler := handlers.NewStudentHandler()
 
 	// API prefix
 	api := r.PathPrefix("/api").Subrouter()
@@ -36,6 +37,8 @@ func SetupRouter(cfg *config.Config) http.Handler {
 
 	// Auth routes
 	protected.HandleFunc("/auth/me", authHandler.GetMe).Methods("GET", "OPTIONS")
+	protected.HandleFunc("/auth/profile", authHandler.UpdateProfile).Methods("PUT", "OPTIONS")
+	protected.HandleFunc("/auth/password", authHandler.UpdatePassword).Methods("PUT", "OPTIONS")
 
 	// Subject routes (accessible to all authenticated users)
 	protected.HandleFunc("/subjects", subjectHandler.GetSubjects).Methods("GET", "OPTIONS")
@@ -77,7 +80,15 @@ func SetupRouter(cfg *config.Config) http.Handler {
 	// Admin - Attempts management
 	admin.HandleFunc("/attempts", attemptHandler.GetAllAttempts).Methods("GET", "OPTIONS")
 
-	// Admin - Session management
+	// Admin - Student management
+	admin.HandleFunc("/students", studentHandler.GetAllStudents).Methods("GET", "OPTIONS")
+	admin.HandleFunc("/students/stats", studentHandler.GetStudentStats).Methods("GET", "OPTIONS")
+	admin.HandleFunc("/students/{id}", studentHandler.GetStudentByID).Methods("GET", "OPTIONS")
+	admin.HandleFunc("/students/{id}/approve", studentHandler.ApproveStudent).Methods("PUT", "OPTIONS")
+	admin.HandleFunc("/students/{id}/reject", studentHandler.RejectStudent).Methods("PUT", "OPTIONS")
+	admin.HandleFunc("/students/{id}/revoke-rejection", studentHandler.RevokeRejection).Methods("PUT", "OPTIONS")
+	admin.HandleFunc("/students/{id}/password", studentHandler.UpdateStudentPassword).Methods("PUT", "OPTIONS")
+	admin.HandleFunc("/students/{id}", studentHandler.DeleteStudent).Methods("DELETE", "OPTIONS")
 	admin.HandleFunc("/quizzes/{quizId}/sessions", sessionHandler.CreateSession).Methods("POST", "OPTIONS")
 	admin.HandleFunc("/quizzes/{quizId}/sessions", sessionHandler.GetSessionsByQuiz).Methods("GET", "OPTIONS")
 	admin.HandleFunc("/sessions/{id}", sessionHandler.GetSession).Methods("GET", "OPTIONS")

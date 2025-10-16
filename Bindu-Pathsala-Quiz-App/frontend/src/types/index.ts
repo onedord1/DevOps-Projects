@@ -1,11 +1,15 @@
 export type UserRole = 'admin' | 'student';
+export type UserStatus = 'pending' | 'approved' | 'rejected';
 
 export interface User {
   id: string;
   student_id: string;
   name: string;
   email: string;
+  phone?: string;
+  address?: string;
   role: UserRole;
+  status: UserStatus;
   batch?: string | null;
   created_at: string;
 }
@@ -116,7 +120,9 @@ export interface ApiResponse<T> {
   message?: string;
 }
 
-export interface ApiError {
-  error: string;
-  message?: string;
+export interface StudentStats {
+  pending: number;
+  approved: number;
+  rejected: number;
+  total: number;
 }

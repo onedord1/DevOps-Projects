@@ -21,11 +21,11 @@ const validateStudentId = (studentId: string): { isValid: boolean; error?: strin
 };
 
 const validatePassword = (password: string): { isValid: boolean; error?: string } => {
-  // Check if password is 8 characters, contains letters and numbers, first letter is capital
-  if (password.length !== 8) {
+  // Check if password is at least 8 characters, contains letters and numbers, first letter is capital
+  if (password.length < 8) {
     return {
       isValid: false,
-      error: 'Password must be exactly 8 characters long'
+      error: 'Password must be at least 8 characters long'
     };
   }
 
@@ -89,13 +89,14 @@ export const Register: React.FC = () => {
     setLoading(true);
 
     try {
-      const userData = await register(studentId, name, email, password, batch || undefined);
-      // Redirect based on user role (though register typically creates students)
-      if (userData.role === 'admin') {
-        navigate('/admin');
-      } else {
-        navigate('/dashboard');
-      }
+      await register(studentId, name, email, password, batch || undefined);
+      // Redirect to login with message that request is submitted
+      navigate('/login', {
+        state: {
+          message: 'Your registration request has been submitted successfully. Please contact your administrator for account activation before you can login.',
+          type: 'info'
+        }
+      });
     } catch (err: any) {
       setError(err.response?.data?.message || 'Registration failed. Please try again.');
     } finally {

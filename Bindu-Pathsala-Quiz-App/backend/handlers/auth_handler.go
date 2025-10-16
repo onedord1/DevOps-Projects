@@ -20,6 +20,11 @@ func NewAuthHandler(cfg *config.Config) *AuthHandler {
 	return &AuthHandler{config: cfg}
 }
 
+type LoginRequest struct {
+	StudentID string `json:"student_id"`
+	Password  string `json:"password"`
+}
+
 type RegisterRequest struct {
 	StudentID string  `json:"student_id"`
 	Name      string  `json:"name"`
@@ -28,9 +33,16 @@ type RegisterRequest struct {
 	Batch     string  `json:"batch"` // optional batch assignment
 }
 
-type LoginRequest struct {
-	StudentID string `json:"student_id"`
-	Password  string `json:"password"`
+type UpdateProfileRequest struct {
+	Name    string `json:"name"`
+	Email   string `json:"email"`
+	Phone   string `json:"phone"`
+	Address string `json:"address"`
+}
+
+type UpdatePasswordRequest struct {
+	Password        string `json:"password"`
+	ConfirmPassword string `json:"confirm_password"`
 }
 
 type AuthResponse struct {
@@ -161,7 +173,7 @@ func (h *AuthHandler) GetMe(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Fetch full user details from database
+	// Always fetch fresh user details from database to ensure updated information
 	var fullUser models.User
 	if err := database.DB.Where("id = ?", user.ID).First(&fullUser).Error; err != nil {
 		utils.RespondError(w, http.StatusNotFound, "User not found")
@@ -169,4 +181,113 @@ func (h *AuthHandler) GetMe(w http.ResponseWriter, r *http.Request) {
 	}
 
 	utils.RespondSuccess(w, http.StatusOK, fullUser.ToResponse(), "")
+}
+
+// UpdateProfile handles user profile updates
+func (h *AuthHandler) UpdateProfile(w http.ResponseWriter, r *http.Request) {
+	user, ok := middleware.GetUserFromContext(r.Context())
+	if !ok {
+		utils.RespondError(w, http.StatusUnauthorized, "User not found")
+		return
+	}
+
+	var req UpdateProfileRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		utils.RespondError(w, http.StatusBadRequest, "Invalid request body")
+		return
+	}
+
+	// Trim whitespace from inputs
+	req.Name = strings.TrimSpace(req.Name)
+	req.Email = strings.TrimSpace(req.Email)
+	req.Phone = strings.TrimSpace(req.Phone)
+	req.Address = strings.TrimSpace(req.Address)
+
+	// Validate input
+	if req.Name == "" {
+		utils.RespondError(w, http.StatusBadRequest, "Name is required")
+		return
+	}
+
+	// Check if email already exists (if provided and different from current)
+	if req.Email != "" && req.Email != user.Email {
+		var existingUser models.User
+		if err := database.DB.Where("email = ?", req.Email).First(&existingUser).Error; err == nil {
+			utils.RespondError(w, http.StatusConflict, "Email already exists")
+			return
+		}
+	}
+
+	// Update user in database
+	updates := map[string]interface{}{
+		"name":    req.Name,
+		"email":   req.Email,
+		"phone":   req.Phone,
+		"address": req.Address,
+	}
+
+	if err := database.DB.Model(&user).Updates(updates).Error; err != nil {
+		utils.RespondError(w, http.StatusInternalServerError, "Failed to update profile")
+		return
+	}
+
+	// Fetch updated user
+	var updatedUser models.User
+	if err := database.DB.Where("id = ?", user.ID).First(&updatedUser).Error; err != nil {
+		utils.RespondError(w, http.StatusInternalServerError, "Failed to fetch updated user")
+		return
+	}
+
+	utils.RespondSuccess(w, http.StatusOK, updatedUser.ToResponse(), "Profile updated successfully")
+}
+
+// UpdatePassword handles password updates
+func (h *AuthHandler) UpdatePassword(w http.ResponseWriter, r *http.Request) {
+	user, ok := middleware.GetUserFromContext(r.Context())
+	if !ok {
+		utils.RespondError(w, http.StatusUnauthorized, "User not found")
+		return
+	}
+
+	var req UpdatePasswordRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		utils.RespondError(w, http.StatusBadRequest, "Invalid request body")
+		return
+	}
+
+	// Trim whitespace from inputs
+	req.Password = strings.TrimSpace(req.Password)
+	req.ConfirmPassword = strings.TrimSpace(req.ConfirmPassword)
+
+	// Validate input
+	if req.Password == "" {
+		utils.RespondError(w, http.StatusBadRequest, "Password is required")
+		return
+	}
+
+	if req.Password != req.ConfirmPassword {
+		utils.RespondError(w, http.StatusBadRequest, "Passwords do not match")
+		return
+	}
+
+	if len(req.Password) < 6 {
+		utils.RespondError(w, http.StatusBadRequest, "Password must be at least 6 characters long")
+		return
+	}
+
+	// Hash new password
+	var updatedUser models.User
+	updatedUser.PasswordHash = user.PasswordHash
+	if err := updatedUser.HashPassword(req.Password); err != nil {
+		utils.RespondError(w, http.StatusInternalServerError, "Failed to hash password")
+		return
+	}
+
+	// Update password in database
+	if err := database.DB.Model(&user).Update("password_hash", updatedUser.PasswordHash).Error; err != nil {
+		utils.RespondError(w, http.StatusInternalServerError, "Failed to update password")
+		return
+	}
+
+	utils.RespondSuccess(w, http.StatusOK, nil, "Password updated successfully")
 }

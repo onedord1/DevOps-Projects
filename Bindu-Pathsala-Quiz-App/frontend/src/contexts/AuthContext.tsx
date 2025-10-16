@@ -8,6 +8,7 @@ interface AuthContextType {
   login: (studentId: string, password: string) => Promise<User>;
   register: (studentId: string, name: string, email: string, password: string, batch?: string) => Promise<User>;
   logout: () => void;
+  refresh: () => Promise<void>;
   isAuthenticated: boolean;
   isAdmin: boolean;
 }
@@ -63,12 +64,59 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUser(null);
   };
 
+  const refresh = async () => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+
+    try {
+      const response = await fetch('/api/auth/me', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        const responseData = await response.json();
+        console.log('Raw response data:', responseData);
+
+        // Handle wrapped response format from backend
+        const updatedUser = responseData.data || responseData;
+        console.log('Extracted user data:', updatedUser);
+
+        // Validate that we got proper user data
+        if (updatedUser && updatedUser.id && updatedUser.role) {
+          localStorage.setItem('user', JSON.stringify(updatedUser));
+          setUser(updatedUser);
+          console.log('AuthContext updated with:', updatedUser);
+        } else {
+          console.error('Invalid user data received from API:', {
+            updatedUser,
+            hasId: !!updatedUser?.id,
+            hasRole: !!updatedUser?.role,
+            idType: typeof updatedUser?.id,
+            roleType: typeof updatedUser?.role
+          });
+        }
+      } else {
+        console.error('Failed to refresh user data:', response.status, response.statusText);
+        const errorText = await response.text();
+        console.error('Error response:', errorText);
+        // If refresh fails, don't clear the user data, just log the error
+        // This prevents the user from losing their admin status due to network issues
+      }
+    } catch (error) {
+      console.error('Error refreshing user data:', error);
+      // Don't clear user data on network errors to prevent admin role loss
+    }
+  };
+
   const value: AuthContextType = {
     user,
     loading,
     login,
     register,
     logout,
+    refresh,
     isAuthenticated: !!user,
     isAdmin: user?.role === 'admin',
   };
