@@ -1,0 +1,56 @@
+# rabbitmq-values.yaml
+auth:
+  username: expense-user
+  # Use a strong password in production!
+  # You can generate one with: openssl rand -base64 32
+  existingPasswordSecret: rabbitmq-secret
+  existingPasswordSecretPasswordKey: rabbitmq-password
+
+persistence:
+  enabled: true
+  size: 8Gi
+
+service:
+  type: ClusterIP
+  port: 5672
+
+# Enable the management UI for easy monitoring and debugging
+manager:
+  enabled: true
+  type: ClusterIP
+  port: 15672
+
+# Define the queue we will use for auto-scaling
+# This is optional but good practice for automation
+extraDefinitions: |
+  {
+    "users": [
+      {
+        "name": "{{ .Values.auth.username }}",
+        "password": "{{ .Values.auth.existingPasswordSecret }}",
+        "tags": "administrator"
+      }
+    ],
+    "vhosts": [
+      {
+        "name": "/"
+      }
+    ],
+    "permissions": [
+      {
+        "user": "{{ .Values.auth.username }}",
+        "vhost": "/",
+        "configure": ".*",
+        "write": ".*",
+        "read": ".*"
+      }
+    ],
+    "queues": [
+      {
+        "name": "expense_processing_queue",
+        "vhost": "/",
+        "durable": true,
+        "auto_delete": false
+      }
+    ]
+  }

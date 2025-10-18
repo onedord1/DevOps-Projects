@@ -8,6 +8,15 @@ import (
     "github.com/joho/godotenv"
 )
 
+type RabbitMQConfig struct {
+    Host     string
+    Port     string
+    User     string
+    Password string
+    VHost    string
+}
+// <<< ADDITION END
+
 type Config struct {
     Database      DatabaseConfig
     JWT           JWTConfig
@@ -16,8 +25,13 @@ type Config struct {
     Email         EmailConfig
     Elasticsearch ElasticsearchConfig
     Performance   PerformanceConfig
+    // <<< ADDITION START
+    // Add the RabbitMQ config to the main Config struct
+    RabbitMQ      RabbitMQConfig
+    // <<< ADDITION END
 }
 
+// ... (all your other struct definitions like DatabaseConfig, JWTConfig, etc. remain the same) ...
 type DatabaseConfig struct {
     Driver              string
     Host                string
@@ -128,11 +142,22 @@ func Load() (*Config, error) {
             GOMEMLIMIT:     getEnvAsInt64("GOMEMLIMIT", 1024*1024*1024), // 1GB default
             EnableProfiling: getEnvAsBool("ENABLE_PROFILING", false),
         },
+        // <<< ADDITION START
+        // Populate the RabbitMQ config from environment variables
+        RabbitMQ: RabbitMQConfig{
+            Host:     getEnv("RABBITMQ_HOST", "localhost"),
+            Port:     getEnv("RABBITMQ_PORT", "5672"),
+            User:     getEnv("RABBITMQ_USER", "guest"),
+            Password: getEnv("RABBITMQ_PASSWORD", "guest"), // This will be populated from the secret in Kubernetes
+            VHost:    getEnv("RABBITMQ_VHOST", "/"),
+        },
+        // <<< ADDITION END
     }
 
     return cfg, nil
 }
 
+// ... (all your helper functions getEnv, getEnvAsInt, etc. remain the same) ...
 func getEnvAsDuration(key string, defaultValue time.Duration) time.Duration {
     if value := os.Getenv(key); value != "" {
         if duration, err := time.ParseDuration(value); err == nil {

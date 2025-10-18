@@ -190,34 +190,3 @@ resource "aws_iam_policy" "alb_controller" {
     ]
   })
 }
-
-resource "aws_iam_role" "alb_controller" {
-  name = "${var.cluster_name}-alb-controller-role"
-  
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Effect = "Allow"
-        Principal = {
-          Federated = var.cluster_oidc_provider_arn
-        }
-        Action = "sts:AssumeRoleWithWebIdentity"
-        Condition = {
-          StringEquals = {
-            "${replace(var.cluster_oidc_issuer_url, "https://", "")}:sub" = "system:serviceaccount:kube-system:aws-load-balancer-controller"
-          }
-        }
-      }
-    ]
-  })
-
-  tags = {
-    Name = "${var.cluster_name}-alb-controller-role"
-  }
-}
-
-resource "aws_iam_role_policy_attachment" "alb_controller" {
-  policy_arn = aws_iam_policy.alb_controller.arn
-  role       = aws_iam_role.alb_controller.name
-}

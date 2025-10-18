@@ -52,3 +52,23 @@ variable "db_password" {
   type        = string
   sensitive   = true
 }
+
+variable "backend_image_name" {
+  description = "The Docker image name for the backend application."
+  type        = string
+}
+
+variable "backend_image_tag" {
+  description = "The Docker image tag for the backend application."
+  type        = string
+}
+
+variable "frontend_image_name" {
+  description = "The Docker image name for the frontend application."
+  type        = string
+}
+
+variable "frontend_image_tag" {
+  description = "The Docker image tag for the frontend application."
+  type        = string
+}

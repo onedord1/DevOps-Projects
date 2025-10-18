@@ -1,0 +1,36 @@
+# keda-scaler.yaml
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: rabbitmq-worker-scaler
+  namespace: expense-tracker
+spec:
+  # The deployment to scale
+  scaleTargetRef:
+    name: expense-tracker-worker
+  # Minimum and maximum number of replicas
+  minReplicaCount: 0
+  maxReplicaCount: 10
+  # Cooldown period before scaling down to 0
+  cooldownPeriod: 300 # 5 minutes
+  # The trigger to scale on
+  triggers:
+  - type: rabbitmq
+    metadata:
+      # The name of the queue to watch
+      queueName: "expense_processing_queue"
+      # The host for the RabbitMQ API. KEDA uses this to check queue length.
+      # Note: This is the HTTP API URL, not the AMQP URL.
+      host: "http://rabbitmq-expense-tracker:15672"
+      # The queue length that should trigger scaling to 1 replica
+      queueLength: '5'
+      # How to authenticate with the RabbitMQ API
+      # We use the secret we created earlier
+      auth:
+        secretRef:
+          name: "rabbitmq-secret"
+          key: "rabbitmq-password"
+          # The username to use for auth
+          username: "expense-user"
+          # The vhost to use
+          vhost: "/"

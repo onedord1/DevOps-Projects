@@ -1,0 +1,45 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: expense-tracker-worker
+  namespace: expense-tracker
+spec:
+  # Start with zero replicas. KEDA will manage this.
+  replicas: 0
+  selector:
+    matchLabels:
+      app: expense-tracker-worker
+  template:
+    metadata:
+      labels:
+        app: expense-tracker-worker
+    spec:
+      imagePullSecrets:
+      - name: docker-registry-secret
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1001
+        runAsGroup: 1001
+        fsGroup: 1001
+      containers:
+      - name: worker
+        image: docker.io/kaderdevops/expense-tracker-be:v1.0
+        # IMPORTANT: You must override the command to start the worker process.
+        # This command is an EXAMPLE. Change it to match your application's
+        # logic for starting a background consumer.
+        command: ["./worker"]
+        envFrom:
+        - configMapRef:
+            name: backend-config
+        - secretRef:
+            name: backend-secret
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "1Gi"
+            cpu: "500m"
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
