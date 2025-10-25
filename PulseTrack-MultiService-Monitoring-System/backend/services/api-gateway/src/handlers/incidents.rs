@@ -397,7 +397,7 @@ pub async fn get_incident_stats(
             COUNT(*) FILTER (WHERE state = 'investigating') as investigating_incidents,
             COUNT(*) FILTER (WHERE state = 'resolved' AND DATE(resolved_at) = CURRENT_DATE) as resolved_today,
             COUNT(*) FILTER (WHERE severity = 'critical' AND state NOT IN ('resolved', 'closed')) as critical_incidents,
-            AVG(EXTRACT(EPOCH FROM (resolved_at - created_at)) / 60) FILTER (WHERE resolved_at IS NOT NULL) as avg_resolution_time_minutes
+            CAST(AVG(EXTRACT(EPOCH FROM (resolved_at - created_at)) / 60) FILTER (WHERE resolved_at IS NOT NULL) AS DOUBLE PRECISION) as avg_resolution_time_minutes
         FROM incidents
         WHERE created_at >= NOW() - INTERVAL '30 days'
         "#,
