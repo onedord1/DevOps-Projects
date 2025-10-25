@@ -53,7 +53,7 @@ impl CheckerScheduler {
     async fn run_checks(&self) -> Result<()> {
         // Fetch all active endpoints that need checking
         let endpoints = sqlx::query_as::<sqlx::Postgres, Endpoint>(
-            "SELECT id, org_id, project_id, name, url, service_type, description, tags, owner_contact, check_interval_seconds, timeout_seconds, expected_status_code, expected_response_time_ms, failure_threshold_minutes, retry_count, retry_delay_seconds, status, last_check_at, last_status_change_at, created_at, updated_at, is_active, auth_header FROM endpoints WHERE is_active = true AND (last_check_at IS NULL OR last_check_at < NOW() - (check_interval_seconds || ' seconds')::INTERVAL) LIMIT 100"
+            "SELECT id, org_id, project_id, name, url, service_type, description, tags, owner_contact, check_interval_seconds, timeout_seconds, expected_status_code, expected_response_time_ms, failure_threshold_minutes, retry_count, retry_delay_seconds, status, last_check_at, last_status_change_at, created_at, updated_at, is_active, auth_header, username, password, database_name, connection_params FROM endpoints WHERE is_active = true AND (last_check_at IS NULL OR last_check_at < NOW() - (check_interval_seconds || ' seconds')::INTERVAL) LIMIT 100"
         )
         .fetch_all(&self.db)
         .await?;
@@ -165,6 +165,9 @@ impl CheckerScheduler {
                     )
                     .await?;
                     state.last_status = EndpointStatus::Up;
+
+                    // Auto-resolve any open incidents
+                    self.auto_resolve_incidents_for_endpoint(db, endpoint).await.ok();
                 }
             } else if state.last_status != EndpointStatus::Up {
                 // First successful check or status is not Up (e.g., Unknown)
@@ -221,6 +224,9 @@ impl CheckerScheduler {
                         timestamp: Utc::now(),
                     };
                     redis.publish("notification_events", &EventMessage::new(event)).await.ok();
+
+                    // Create or update incident
+                    self.handle_incident_for_endpoint(db, endpoint, state.first_failure_at.unwrap(), &result).await.ok();
                 }
             }
         }
@@ -281,6 +287,190 @@ impl CheckerScheduler {
                 timestamp: Utc::now(),
             };
             redis.publish("notification_events", &EventMessage::new(event)).await.ok();
+        }
+
+        Ok(())
+    }
+
+    async fn handle_incident_for_endpoint(
+        &self,
+        db: &PgPool,
+        endpoint: &Endpoint,
+        first_failure_at: chrono::DateTime<chrono::Utc>,
+        result: &models::HealthCheckResult,
+    ) -> Result<()> {
+        // Check if there's already an open incident for this endpoint
+        let existing_incident: Option<(Uuid,)> = sqlx::query_as(
+            "SELECT id FROM incidents 
+             WHERE endpoint_id = $1 
+             AND state IN ('open', 'acknowledged', 'investigating') 
+             ORDER BY created_at DESC 
+             LIMIT 1"
+        )
+        .bind(endpoint.id)
+        .fetch_optional(db)
+        .await?;
+
+        if let Some((incident_id,)) = existing_incident {
+            // Update existing incident
+            sqlx::query(
+                "UPDATE incidents 
+                 SET last_failure_at = NOW(), 
+                     failure_count = failure_count + 1,
+                     updated_at = NOW()
+                 WHERE id = $1"
+            )
+            .bind(incident_id)
+            .execute(db)
+            .await?;
+
+            tracing::debug!(
+                "Updated existing incident {} for endpoint {}",
+                incident_id,
+                endpoint.id
+            );
+        } else {
+            // Create new incident
+            let severity = match endpoint.service_type {
+                models::ServiceType::Database => "critical",
+                models::ServiceType::Backend | models::ServiceType::Api => "high",
+                models::ServiceType::Microservice => "medium",
+                _ => "low",
+            };
+
+            let title = format!("{} is Down", endpoint.name);
+            let description = match (&result.failure_reason, &result.error_message) {
+                (Some(reason), Some(msg)) => format!("{}: {}", reason, msg),
+                (Some(reason), None) => format!("{}", reason),
+                (None, Some(msg)) => msg.clone(),
+                (None, None) => "Service health check failed".to_string(),
+            };
+
+            let metadata = serde_json::json!({
+                "auto_created": true,
+                "service_type": endpoint.service_type,
+                "url": endpoint.url,
+                "failure_reason": result.failure_reason,
+                "error_message": result.error_message,
+            });
+
+            let incident_id: (Uuid,) = sqlx::query_as(
+                "INSERT INTO incidents 
+                 (endpoint_id, title, description, severity, assigned_to, first_failure_at, last_failure_at, metadata, created_by)
+                 VALUES ($1, $2, $3, $4, $5, $6, $6, $7, 'system')
+                 RETURNING id"
+            )
+            .bind(endpoint.id)
+            .bind(&title)
+            .bind(&description)
+            .bind(severity)
+            .bind(&endpoint.owner_contact)
+            .bind(first_failure_at)
+            .bind(metadata)
+            .fetch_one(db)
+            .await?;
+
+            // Record initial state history
+            sqlx::query(
+                "INSERT INTO incident_state_history (incident_id, from_state, to_state, changed_by, notes)
+                 VALUES ($1, NULL, 'open', 'system', 'Incident auto-created by monitoring system')"
+            )
+            .bind(incident_id.0)
+            .execute(db)
+            .await?;
+
+            tracing::info!(
+                "Created incident {} for endpoint {} ({})",
+                incident_id.0,
+                endpoint.name,
+                endpoint.id
+            );
+
+            // Publish incident created event
+            let event = Event::Custom {
+                event_type: "incident.created".to_string(),
+                data: serde_json::json!({
+                    "incident_id": incident_id.0,
+                    "endpoint_id": endpoint.id,
+                    "endpoint_name": endpoint.name,
+                    "severity": severity,
+                    "title": title,
+                }),
+                timestamp: Utc::now(),
+            };
+            self.redis.publish("incident_events", &EventMessage::new(event)).await.ok();
+        }
+
+        Ok(())
+    }
+
+    async fn auto_resolve_incidents_for_endpoint(
+        &self,
+        db: &PgPool,
+        endpoint: &Endpoint,
+    ) -> Result<()> {
+        // Find all open incidents for this endpoint
+        let open_incidents: Vec<(Uuid,)> = sqlx::query_as(
+            "SELECT id FROM incidents 
+             WHERE endpoint_id = $1 
+             AND state IN ('open', 'acknowledged', 'investigating')
+             ORDER BY created_at DESC"
+        )
+        .bind(endpoint.id)
+        .fetch_all(db)
+        .await?;
+
+        for (incident_id,) in open_incidents {
+            // Get current state before updating
+            let current_state: (String,) = sqlx::query_as(
+                "SELECT state FROM incidents WHERE id = $1"
+            )
+            .bind(incident_id)
+            .fetch_one(db)
+            .await?;
+
+            // Update incident to resolved
+            sqlx::query(
+                "UPDATE incidents 
+                 SET state = 'resolved', 
+                     resolved_at = NOW(),
+                     resolution_notes = 'Auto-resolved: Service recovered and is now healthy',
+                     updated_at = NOW()
+                 WHERE id = $1"
+            )
+            .bind(incident_id)
+            .execute(db)
+            .await?;
+
+            // Record state history
+            sqlx::query(
+                "INSERT INTO incident_state_history (incident_id, from_state, to_state, changed_by, notes)
+                 VALUES ($1, $2, 'resolved', 'system', 'Auto-resolved by monitoring system')"
+            )
+            .bind(incident_id)
+            .bind(current_state.0)
+            .execute(db)
+            .await?;
+
+            tracing::info!(
+                "Auto-resolved incident {} for endpoint {} ({})",
+                incident_id,
+                endpoint.name,
+                endpoint.id
+            );
+
+            // Publish incident resolved event
+            let event = Event::Custom {
+                event_type: "incident.resolved".to_string(),
+                data: serde_json::json!({
+                    "incident_id": incident_id,
+                    "endpoint_id": endpoint.id,
+                    "endpoint_name": endpoint.name,
+                    "resolution_type": "auto",
+                }),
+                timestamp: Utc::now(),
+            };
+            self.redis.publish("incident_events", &EventMessage::new(event)).await.ok();
         }
 
         Ok(())

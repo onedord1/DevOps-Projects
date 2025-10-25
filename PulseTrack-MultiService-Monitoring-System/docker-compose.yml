@@ -7,7 +7,7 @@ services:
       POSTGRES_USER: monitoring
       POSTGRES_PASSWORD: monitoring_password
     ports:
-      - "5432:5432"
+      - "0.0.0.0:5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./backend/migrations:/docker-entrypoint-initdb.d
@@ -18,10 +18,10 @@ services:
       retries: 5
 
   redis:
-    image: redis:8.2.2-alpine
+    image: redis:7-alpine
     container_name: monitoring-redis
     ports:
-      - "6379:6379"
+      - "0.0.0.0:6379:6379"
     volumes:
       - redis_data:/data
     healthcheck:
@@ -43,7 +43,7 @@ services:
       JWT_SECRET: ${JWT_SECRET:-your-super-secret-jwt-key-change-in-production}
       RUST_LOG: info
     ports:
-      - "8080:8080"
+      - "0.0.0.0:8080:8080"
     depends_on:
       postgres:
         condition: service_healthy
@@ -97,10 +97,10 @@ services:
       dockerfile: Dockerfile
     container_name: monitoring-frontend
     environment:
-      NEXT_PUBLIC_API_URL: http://localhost:8080
-      NEXT_PUBLIC_WS_URL: ws://localhost:8080
+      NEXT_PUBLIC_API_URL: http://192.168.10.69:8080
+      NEXT_PUBLIC_WS_URL: ws://192.168.10.69:8080
     ports:
-      - "3000:3000"
+      - "0.0.0.0:3000:3000"
     depends_on:
       - api-gateway
     restart: unless-stopped

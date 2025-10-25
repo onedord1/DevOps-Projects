@@ -11,6 +11,13 @@ import type {
   ProjectWithStats,
   RegisterRequest,
   User,
+  Incident,
+  IncidentWithEndpoint,
+  IncidentStats,
+  IncidentStateHistory,
+  CreateIncidentRequest,
+  UpdateIncidentRequest,
+  ChangeIncidentStateRequest,
 } from '@/types'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'
@@ -234,6 +241,54 @@ class ApiClient {
 
   async deleteApiKey(id: string) {
     const { data } = await this.client.delete<ApiResponse<void>>(`/api-keys/${id}`)
+    return data
+  }
+
+  // Incidents
+  async getIncidents(params?: {
+    page?: number
+    per_page?: number
+    state?: string
+    severity?: string
+    endpoint_id?: string
+    assigned_to?: string
+  }) {
+    const { data } = await this.client.get<ApiResponse<PaginatedResponse<IncidentWithEndpoint>>>('/incidents', { params })
+    return data
+  }
+
+  async getIncident(id: string) {
+    const { data } = await this.client.get<ApiResponse<IncidentWithEndpoint>>(`/incidents/${id}`)
+    return data
+  }
+
+  async createIncident(incident: CreateIncidentRequest) {
+    const { data } = await this.client.post<ApiResponse<Incident>>('/incidents', incident)
+    return data
+  }
+
+  async updateIncident(id: string, updates: UpdateIncidentRequest) {
+    const { data } = await this.client.put<ApiResponse<Incident>>(`/incidents/${id}`, updates)
+    return data
+  }
+
+  async changeIncidentState(id: string, request: ChangeIncidentStateRequest) {
+    const { data } = await this.client.put<ApiResponse<Incident>>(`/incidents/${id}/state`, request)
+    return data
+  }
+
+  async getIncidentHistory(id: string) {
+    const { data } = await this.client.get<ApiResponse<IncidentStateHistory[]>>(`/incidents/${id}/history`)
+    return data
+  }
+
+  async getIncidentStats() {
+    const { data } = await this.client.get<ApiResponse<IncidentStats>>('/incidents/stats')
+    return data
+  }
+
+  async deleteIncident(id: string) {
+    const { data } = await this.client.delete<ApiResponse<void>>(`/incidents/${id}`)
     return data
   }
 }

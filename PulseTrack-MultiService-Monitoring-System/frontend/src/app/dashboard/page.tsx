@@ -6,11 +6,11 @@ import { useAuth } from '@/lib/auth-context'
 import { useWebSocket } from '@/lib/websocket-context'
 import { useRouter } from 'next/navigation'
 import { apiClient } from '@/lib/api-client'
-import { DashboardLayout } from '@/components/dashboard/dashboard-layout'
 import { ServiceCard } from '@/components/dashboard/service-card'
 import { StatsOverview } from '@/components/dashboard/stats-overview'
 import { FilterBar } from '@/components/dashboard/filter-bar'
 import { AddEndpointDialog } from '@/components/dashboard/add-endpoint-dialog'
+import { IncidentWidget } from '@/components/dashboard/incident-widget'
 import { Button } from '@/components/ui/button'
 import { Plus, RefreshCw, FolderKanban, ArrowRight } from 'lucide-react'
 import type { Endpoint, EndpointStatus, ServiceType, ProjectWithStats } from '@/types'
@@ -118,8 +118,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <DashboardLayout>
-      <div className="space-y-6">
+    <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold">Service Dashboard</h1>
@@ -137,6 +136,9 @@ export default function DashboardPage() {
         </div>
 
         <StatsOverview stats={stats} />
+
+        {/* Incident Widget */}
+        <IncidentWidget />
 
         {/* Projects Section */}
         {!projectsLoading && projectsData?.data?.items && projectsData.data.items.length > 0 && (
@@ -220,7 +222,6 @@ export default function DashboardPage() {
         )}
 
         <AddEndpointDialog open={showAddDialog} onOpenChange={setShowAddDialog} onSuccess={() => refetch()} />
-      </div>
-    </DashboardLayout>
+    </div>
   )
 }

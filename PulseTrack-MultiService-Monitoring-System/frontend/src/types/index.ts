@@ -1,4 +1,4 @@
-export type ServiceType = 'frontend' | 'backend' | 'microservice' | 'database' | 'api' | 'other'
+export type ServiceType = 'frontend' | 'backend' | 'microservice' | 'database' | 'api' | 'websocket' | 'grpc' | 'other'
 
 export type EndpointStatus = 'UP' | 'PARTIAL_OUTAGE' | 'DOWN' | 'UNKNOWN'
 
@@ -85,6 +85,10 @@ export interface Endpoint {
   updated_at: string
   is_active: boolean
   auth_header?: string
+  username?: string
+  password?: string
+  database_name?: string
+  connection_params?: any
 }
 
 export interface HealthCheck {
@@ -173,3 +177,6 @@ export interface WebSocketEvent {
   data: any
   timestamp: string
 }
+
+// Re-export incident types
+export * from './incident'

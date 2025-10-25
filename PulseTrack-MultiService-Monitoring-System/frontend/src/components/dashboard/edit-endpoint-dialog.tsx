@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { X, Loader2 } from 'lucide-react'
+import { X, Loader2, Activity, Lock, Info } from 'lucide-react'
 import { apiClient } from '@/lib/api-client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -24,15 +24,36 @@ export function EditEndpointDialog({ endpoint, open, onOpenChange, onSuccess }: 
     tags: endpoint.tags ? endpoint.tags.join(', ') : '',
     owner_contact: endpoint.owner_contact || '',
     check_interval_seconds: endpoint.check_interval_seconds || 60,
-    timeout_seconds: endpoint.timeout_seconds || 30,
+    timeout_seconds: endpoint.timeout_seconds || 10,
     expected_status_code: endpoint.expected_status_code || 200,
-    failure_threshold_minutes: endpoint.failure_threshold_minutes || 5,
-    retry_count: endpoint.retry_count || 3,
+    failure_threshold_minutes: endpoint.failure_threshold_minutes || 3,
+    retry_count: endpoint.retry_count || 2,
     retry_delay_seconds: endpoint.retry_delay_seconds || 5,
     auth_header: endpoint.auth_header || '',
+    username: endpoint.username || '',
+    password: endpoint.password || '',
+    database_name: endpoint.database_name || '',
+    database_type: endpoint.url?.includes('mysql') ? 'mysql' : 'postgresql',
+    project_id: endpoint.project_id || '',
   })
+  const [projects, setProjects] = useState<any[]>([])
   const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+
+  // Fetch projects
+  useEffect(() => {
+    const fetchProjects = async () => {
+      try {
+        const response = await apiClient.getProjects()
+        if (response.success && response.data) {
+          setProjects(response.data.items || [])
+        }
+      } catch (err) {
+        console.error('Failed to fetch projects:', err)
+      }
+    }
+    fetchProjects()
+  }, [])
 
   // Update form when endpoint changes
   useEffect(() => {
@@ -45,16 +66,33 @@ export function EditEndpointDialog({ endpoint, open, onOpenChange, onSuccess }: 
         tags: endpoint.tags ? endpoint.tags.join(', ') : '',
         owner_contact: endpoint.owner_contact || '',
         check_interval_seconds: endpoint.check_interval_seconds || 60,
-        timeout_seconds: endpoint.timeout_seconds || 30,
+        timeout_seconds: endpoint.timeout_seconds || 10,
         expected_status_code: endpoint.expected_status_code || 200,
-        failure_threshold_minutes: endpoint.failure_threshold_minutes || 5,
-        retry_count: endpoint.retry_count || 3,
+        failure_threshold_minutes: endpoint.failure_threshold_minutes || 3,
+        retry_count: endpoint.retry_count || 2,
         retry_delay_seconds: endpoint.retry_delay_seconds || 5,
         auth_header: endpoint.auth_header || '',
+        username: endpoint.username || '',
+        password: endpoint.password || '',
+        database_name: endpoint.database_name || '',
+        database_type: endpoint.url?.includes('mysql') ? 'mysql' : 'postgresql',
+        project_id: endpoint.project_id || '',
       })
       setError('')
     }
   }, [endpoint, open])
+
+  // Auto-detect database type from URL
+  const handleUrlChange = (newUrl: string) => {
+    setFormData({ ...formData, url: newUrl })
+    if (formData.service_type === 'database') {
+      if (newUrl.includes('mysql')) {
+        setFormData(prev => ({ ...prev, url: newUrl, database_type: 'mysql' }))
+      } else if (newUrl.includes('postgres')) {
+        setFormData(prev => ({ ...prev, url: newUrl, database_type: 'postgresql' }))
+      }
+    }
+  }
 
   if (!open) return null
 
@@ -70,6 +108,10 @@ export function EditEndpointDialog({ endpoint, open, onOpenChange, onSuccess }: 
           ? formData.tags.split(',').map((t) => t.trim()).filter(Boolean)
           : undefined,
         auth_header: formData.auth_header || undefined,
+        username: formData.username || undefined,
+        password: formData.password || undefined,
+        database_name: formData.database_name || undefined,
+        project_id: formData.project_id || undefined,
       }
 
       const response = await apiClient.updateEndpoint(endpoint.id, payload)
@@ -87,7 +129,8 @@ export function EditEndpointDialog({ endpoint, open, onOpenChange, onSuccess }: 
     }
   }
 
-  const requiresAuth = formData.service_type !== 'frontend'
+  const requiresAuthHeader = ['backend', 'api', 'microservice', 'other'].includes(formData.service_type)
+  const requiresDatabaseCreds = formData.service_type === 'database'
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
@@ -148,148 +191,227 @@ export function EditEndpointDialog({ endpoint, open, onOpenChange, onSuccess }: 
             </div>
           </div>
 
-          {/* URL */}
+          {/* Row 3: URL */}
           <div className="space-y-2">
-            <Label htmlFor="edit-url">
-              Service URL <span className="text-red-500">*</span>
-            </Label>
-            <Input
+            <label htmlFor="edit-url" className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+              Endpoint URL *
+            </label>
+            <input
               id="edit-url"
               type="url"
-              value={formData.url}
-              onChange={(e) => setFormData({ ...formData, url: e.target.value })}
-              placeholder="https://api.example.com/health"
               required
+              value={formData.url}
+              onChange={(e) => handleUrlChange(e.target.value)}
+              className="w-full px-4 py-3 border-2 border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-slate-800 transition-all"
+              placeholder="https://api.example.com/health"
             />
           </div>
 
-          {/* Description */}
-          <div className="space-y-2">
-            <Label htmlFor="edit-description">Description</Label>
-            <textarea
-              id="edit-description"
-              value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              placeholder="Describe your service endpoint..."
-              rows={3}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400"
-            />
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Check Interval */}
+          {/* Row 4: Project (optional) */}
+          {projects.length > 0 && (
             <div className="space-y-2">
-              <Label htmlFor="edit-check-interval">Check Interval (seconds)</Label>
-              <Input
+              <label htmlFor="edit-project" className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+                Project (Optional)
+              </label>
+              <select
+                id="edit-project"
+                value={formData.project_id}
+                onChange={(e) => setFormData({ ...formData, project_id: e.target.value })}
+                className="w-full px-4 py-3 border-2 border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-slate-800 transition-all"
+              >
+                <option value="">No Project</option>
+                {projects.map((project: any) => (
+                  <option key={project.id} value={project.id}>
+                    {project.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {/* Row 5: Monitoring Configuration */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="space-y-2">
+              <label htmlFor="edit-check-interval" className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+                Check Interval (seconds)
+              </label>
+              <input
                 id="edit-check-interval"
                 type="number"
                 min="10"
                 max="3600"
                 value={formData.check_interval_seconds}
                 onChange={(e) => setFormData({ ...formData, check_interval_seconds: parseInt(e.target.value) })}
+                className="w-full px-4 py-3 border-2 border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-slate-800 transition-all"
               />
             </div>
 
-            {/* Timeout */}
             <div className="space-y-2">
-              <Label htmlFor="edit-timeout">Timeout (seconds)</Label>
-              <Input
+              <label htmlFor="edit-timeout" className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+                Timeout (seconds)
+              </label>
+              <input
                 id="edit-timeout"
                 type="number"
                 min="1"
-                max="300"
+                max="120"
                 value={formData.timeout_seconds}
                 onChange={(e) => setFormData({ ...formData, timeout_seconds: parseInt(e.target.value) })}
+                className="w-full px-4 py-3 border-2 border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-slate-800 transition-all"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label htmlFor="edit-failure-threshold" className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+                Failure Threshold (min)
+              </label>
+              <input
+                id="edit-failure-threshold"
+                type="number"
+                min="1"
+                max="10"
+                value={formData.failure_threshold_minutes}
+                onChange={(e) => setFormData({ ...formData, failure_threshold_minutes: parseInt(e.target.value) })}
+                className="w-full px-4 py-3 border-2 border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-slate-800 transition-all"
               />
             </div>
           </div>
 
-          {/* Tags */}
-          <div className="space-y-2">
-            <Label htmlFor="edit-tags">Tags (comma-separated)</Label>
-            <Input
-              id="edit-tags"
-              value={formData.tags}
-              onChange={(e) => setFormData({ ...formData, tags: e.target.value })}
-              placeholder="production, critical, api"
-            />
-          </div>
-
-          {/* Auth Header (conditional) */}
-          {requiresAuth && (
-            <div className="space-y-2">
-              <Label htmlFor="edit-auth-header">Authentication Header (Optional)</Label>
-              <Input
+          {/* Conditional Auth Header for HTTP services */}
+          {requiresAuthHeader && (
+            <div className="space-y-2 bg-blue-50 dark:bg-blue-900/20 border-2 border-blue-200 dark:border-blue-800 rounded-xl p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Lock className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                <label htmlFor="edit-auth-header" className="text-sm font-semibold text-blue-900 dark:text-blue-100">
+                  Authorization Header
+                </label>
+              </div>
+              <input
                 id="edit-auth-header"
+                type="password"
                 value={formData.auth_header}
                 onChange={(e) => setFormData({ ...formData, auth_header: e.target.value })}
+                className="w-full px-4 py-3 border-2 border-blue-200 dark:border-blue-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-slate-800 transition-all"
                 placeholder="Bearer token123 or Basic user:pass"
-                type="password"
               />
-              <p className="text-xs text-gray-500 dark:text-gray-400">
+              <p className="text-xs text-blue-700 dark:text-blue-300 mt-2">
                 For protected endpoints requiring authentication
               </p>
             </div>
           )}
 
-          {/* Owner Contact */}
-          <div className="space-y-2">
-            <Label htmlFor="edit-owner-contact">Owner Email</Label>
-            <Input
-              id="edit-owner-contact"
-              type="email"
-              value={formData.owner_contact}
-              onChange={(e) => setFormData({ ...formData, owner_contact: e.target.value })}
-              placeholder="owner@example.com"
-            />
-          </div>
-
-          {/* Advanced Settings */}
-          <details className="border border-gray-200 dark:border-gray-700 rounded-lg">
-            <summary className="cursor-pointer p-4 font-medium text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-700/50 rounded-lg">
-              Advanced Settings
-            </summary>
-            <div className="p-4 space-y-4 border-t border-gray-200 dark:border-gray-700">
-              <div className="grid grid-cols-2 gap-4">
+          {/* Conditional Database Credentials */}
+          {requiresDatabaseCreds && (
+            <div className="space-y-4 bg-purple-50 dark:bg-purple-900/20 border-2 border-purple-200 dark:border-purple-800 rounded-xl p-6">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Lock className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                  <label className="text-sm font-semibold text-purple-900 dark:text-purple-100">
+                    Database Credentials
+                  </label>
+                </div>
+                <select
+                  value={formData.database_type}
+                  onChange={(e) => setFormData({ ...formData, database_type: e.target.value })}
+                  className="px-3 py-1.5 text-xs border-2 border-purple-200 dark:border-purple-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white dark:bg-slate-800"
+                >
+                  <option value="postgresql">PostgreSQL</option>
+                  <option value="mysql">MySQL/MariaDB</option>
+                </select>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="edit-expected-status">Expected Status Code</Label>
-                  <Input
-                    id="edit-expected-status"
-                    type="number"
-                    value={formData.expected_status_code}
-                    onChange={(e) => setFormData({ ...formData, expected_status_code: parseInt(e.target.value) })}
+                  <label htmlFor="edit-username" className="text-sm font-semibold text-purple-900 dark:text-purple-100">
+                    Username *
+                  </label>
+                  <input
+                    id="edit-username"
+                    type="text"
+                    required
+                    value={formData.username}
+                    onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+                    className="w-full px-4 py-3 border-2 border-purple-200 dark:border-purple-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-slate-800 transition-all"
+                    placeholder={formData.database_type === 'postgresql' ? 'postgres' : 'root'}
                   />
                 </div>
+                
                 <div className="space-y-2">
-                  <Label htmlFor="edit-failure-threshold">Failure Threshold (min)</Label>
-                  <Input
-                    id="edit-failure-threshold"
-                    type="number"
-                    value={formData.failure_threshold_minutes}
-                    onChange={(e) => setFormData({ ...formData, failure_threshold_minutes: parseInt(e.target.value) })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="edit-retry-count">Retry Count</Label>
-                  <Input
-                    id="edit-retry-count"
-                    type="number"
-                    value={formData.retry_count}
-                    onChange={(e) => setFormData({ ...formData, retry_count: parseInt(e.target.value) })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="edit-retry-delay">Retry Delay (sec)</Label>
-                  <Input
-                    id="edit-retry-delay"
-                    type="number"
-                    value={formData.retry_delay_seconds}
-                    onChange={(e) => setFormData({ ...formData, retry_delay_seconds: parseInt(e.target.value) })}
+                  <label htmlFor="edit-password" className="text-sm font-semibold text-purple-900 dark:text-purple-100">
+                    Password *
+                  </label>
+                  <input
+                    id="edit-password"
+                    type="password"
+                    required
+                    value={formData.password}
+                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                    className="w-full px-4 py-3 border-2 border-purple-200 dark:border-purple-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-slate-800 transition-all"
+                    placeholder="Required for connection"
                   />
                 </div>
               </div>
+              
+              <div className="space-y-2">
+                <label htmlFor="edit-database-name" className="text-sm font-semibold text-purple-900 dark:text-purple-100">
+                  Database Name
+                </label>
+                <input
+                  id="edit-database-name"
+                  type="text"
+                  value={formData.database_name}
+                  onChange={(e) => setFormData({ ...formData, database_name: e.target.value })}
+                  className="w-full px-4 py-3 border-2 border-purple-200 dark:border-purple-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-slate-800 transition-all"
+                  placeholder={formData.database_type === 'postgresql' ? 'monitoring_system' : 'mydb'}
+                />
+              </div>
+              
+              <div className="flex items-start gap-2 mt-2">
+                <Info className="h-4 w-4 text-purple-600 dark:text-purple-400 flex-shrink-0 mt-0.5" />
+                <p className="text-xs text-purple-700 dark:text-purple-300">
+                  {formData.database_type === 'postgresql' ? (
+                    <>
+                      <strong>PostgreSQL:</strong> Creates actual database connection and executes <code className="bg-purple-200 dark:bg-purple-800 px-1 rounded">SELECT 1</code> query.<br />
+                      Both <strong>username and password are required</strong> for authentication.
+                    </>
+                  ) : (
+                    <>
+                      <strong>MySQL/MariaDB:</strong> Creates actual database connection and executes <code className="bg-purple-200 dark:bg-purple-800 px-1 rounded">SELECT 1</code> query.<br />
+                      Both <strong>username and password are required</strong> for authentication.
+                    </>
+                  )}
+                </p>
+              </div>
             </div>
-          </details>
+          )}
+
+          <div className="space-y-2">
+            <label htmlFor="edit-description" className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+              Description
+            </label>
+            <textarea
+              id="edit-description"
+              value={formData.description}
+              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              className="w-full px-4 py-3 border-2 border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-slate-800 transition-all resize-none"
+              rows={3}
+              placeholder="Optional description..."
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label htmlFor="edit-tags" className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+              Tags (comma-separated)
+            </label>
+            <input
+              id="edit-tags"
+              type="text"
+              value={formData.tags}
+              onChange={(e) => setFormData({ ...formData, tags: e.target.value })}
+              className="w-full px-4 py-3 border-2 border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-slate-800 transition-all"
+              placeholder="production, critical, us-east"
+            />
+          </div>
 
           {/* Actions */}
           <div className="flex gap-3 pt-4">

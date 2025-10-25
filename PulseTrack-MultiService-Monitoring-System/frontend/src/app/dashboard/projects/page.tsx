@@ -9,7 +9,6 @@ import { Input } from '@/components/ui/input'
 import { ProjectCard } from '@/components/dashboard/project-card'
 import { AddProjectDialog } from '@/components/dashboard/add-project-dialog'
 import { ProjectDetailDialog } from '@/components/dashboard/project-detail-dialog'
-import { DashboardLayout } from '@/components/dashboard/dashboard-layout'
 
 export default function ProjectsPage() {
   const [projects, setProjects] = useState<ProjectWithStats[]>([])
@@ -80,8 +79,7 @@ export default function ProjectsPage() {
   const downEndpoints = projects.reduce((sum, p) => sum + (p.down_endpoints || 0), 0)
 
   return (
-    <DashboardLayout>
-      <div className="space-y-6">
+    <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -217,7 +215,6 @@ export default function ProjectsPage() {
           onProjectDeleted={handleProjectDeleted}
         />
       )}
-      </div>
-    </DashboardLayout>
+    </div>
   )
 }

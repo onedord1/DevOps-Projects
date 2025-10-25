@@ -7,6 +7,7 @@ pub mod auth;
 pub mod event;
 pub mod api_key;
 pub mod project;
+pub mod incident;
 
 pub use organization::*;
 pub use endpoint::*;
@@ -17,6 +18,7 @@ pub use auth::*;
 pub use event::*;
 pub use api_key::*;
 pub use project::*;
+pub use incident::*;
 
 use serde::{Deserialize, Serialize};
 

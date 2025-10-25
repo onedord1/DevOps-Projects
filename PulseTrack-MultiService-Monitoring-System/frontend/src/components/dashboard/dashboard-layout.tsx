@@ -18,11 +18,13 @@ import {
   Wifi,
   WifiOff,
   FolderKanban,
+  AlertCircle,
 } from 'lucide-react'
 import { useTheme } from 'next-themes'
 
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+  { name: 'Incidents', href: '/dashboard/incidents', icon: AlertCircle },
   { name: 'Projects', href: '/dashboard/projects', icon: FolderKanban },
   { name: 'Notifications', href: '/dashboard/notifications', icon: Bell },
   { name: 'Users', href: '/dashboard/users', icon: Users },

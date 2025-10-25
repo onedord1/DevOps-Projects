@@ -27,6 +27,23 @@ pub enum FailureReason {
     Other,
 }
 
+impl std::fmt::Display for FailureReason {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            FailureReason::Timeout => write!(f, "TIMEOUT"),
+            FailureReason::DnsError => write!(f, "DNS_ERROR"),
+            FailureReason::ConnectionError => write!(f, "CONNECTION_ERROR"),
+            FailureReason::TlsError => write!(f, "TLS_ERROR"),
+            FailureReason::HttpError => write!(f, "HTTP_ERROR"),
+            FailureReason::UnexpectedStatusCode => write!(f, "UNEXPECTED_STATUS_CODE"),
+            FailureReason::ResponseTimeExceeded => write!(f, "RESPONSE_TIME_EXCEEDED"),
+            FailureReason::InvalidResponse => write!(f, "INVALID_RESPONSE"),
+            FailureReason::NetworkError => write!(f, "NETWORK_ERROR"),
+            FailureReason::Other => write!(f, "OTHER"),
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
 pub struct HealthCheck {
     pub id: Uuid,

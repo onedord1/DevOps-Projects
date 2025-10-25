@@ -1,9 +1,10 @@
 use anyhow::Result;
 use chrono::Utc;
-use models::{CheckStatus, Endpoint, FailureReason, HealthCheckResult};
+use models::{CheckStatus, Endpoint, FailureReason, HealthCheckResult, ServiceType};
 use reqwest::Client;
 use std::time::{Duration, Instant};
 use uuid::Uuid;
+use sqlx::{Connection, PgConnection, MySqlConnection};
 
 pub struct HealthChecker {
     client: Client,
@@ -18,7 +19,15 @@ impl HealthChecker {
         let start = Instant::now();
         let timeout = Duration::from_secs(endpoint.timeout_seconds as u64);
 
-        let result = tokio::time::timeout(timeout, self.perform_check(endpoint)).await;
+        // Route to appropriate check based on service type
+        let result = match endpoint.service_type {
+            ServiceType::Database => {
+                tokio::time::timeout(timeout, self.perform_database_check(endpoint)).await
+            }
+            _ => {
+                tokio::time::timeout(timeout, self.perform_http_check(endpoint)).await
+            }
+        };
 
         let elapsed = start.elapsed();
         let response_time_ms = elapsed.as_millis() as i32;
@@ -97,7 +106,7 @@ impl HealthChecker {
         }
     }
 
-    async fn perform_check(&self, endpoint: &Endpoint) -> Result<CheckResult> {
+    async fn perform_http_check(&self, endpoint: &Endpoint) -> Result<CheckResult> {
         let mut request = self.client.get(&endpoint.url);
         
         // Add Authorization header if auth_header is configured
@@ -117,6 +126,133 @@ impl HealthChecker {
         } else {
             anyhow::bail!("HTTP error: {}", status_code)
         }
+    }
+
+    async fn perform_database_check(&self, endpoint: &Endpoint) -> Result<CheckResult> {
+        // Detect database type from URL
+        let url = &endpoint.url;
+        
+        if url.starts_with("postgresql://") || url.starts_with("postgres://") {
+            self.check_postgresql(endpoint).await
+        } else if url.starts_with("mysql://") {
+            self.check_mysql(endpoint).await
+        } else {
+            anyhow::bail!("Unsupported database URL format: {}", url)
+        }
+    }
+
+    async fn check_postgresql(&self, endpoint: &Endpoint) -> Result<CheckResult> {
+        // Build connection string from endpoint data
+        let conn_str = self.build_postgres_connection_string(endpoint)?;
+        
+        // Attempt to connect
+        let mut conn = PgConnection::connect(&conn_str).await.map_err(|e| {
+            anyhow::anyhow!("PostgreSQL connection failed: {}", e)
+        })?;
+
+        // Execute simple query to verify connection
+        sqlx::query("SELECT 1")
+            .execute(&mut conn)
+            .await
+            .map_err(|e| anyhow::anyhow!("PostgreSQL query failed: {}", e))?;
+
+        conn.close().await.ok();
+
+        Ok(CheckResult {
+            status_code: None, // Databases don't have HTTP status codes
+        })
+    }
+
+    async fn check_mysql(&self, endpoint: &Endpoint) -> Result<CheckResult> {
+        // Build connection string from endpoint data
+        let conn_str = self.build_mysql_connection_string(endpoint)?;
+        
+        // Attempt to connect
+        let mut conn = MySqlConnection::connect(&conn_str).await.map_err(|e| {
+            anyhow::anyhow!("MySQL connection failed: {}", e)
+        })?;
+
+        // Execute simple query to verify connection
+        sqlx::query("SELECT 1")
+            .execute(&mut conn)
+            .await
+            .map_err(|e| anyhow::anyhow!("MySQL query failed: {}", e))?;
+
+        conn.close().await.ok();
+
+        Ok(CheckResult {
+            status_code: None, // Databases don't have HTTP status codes
+        })
+    }
+
+    fn build_postgres_connection_string(&self, endpoint: &Endpoint) -> Result<String> {
+        // Parse URL to extract host and port
+        let url = &endpoint.url;
+        let parts: Vec<&str> = url.split("://").collect();
+        
+        if parts.len() != 2 {
+            anyhow::bail!("Invalid PostgreSQL URL format");
+        }
+        
+        let host_port = parts[1].trim_end_matches('/');
+        
+        // Build connection string
+        let mut conn_str = format!("postgresql://");
+        
+        if let Some(username) = &endpoint.username {
+            conn_str.push_str(username);
+            
+            if let Some(password) = &endpoint.password {
+                conn_str.push(':');
+                conn_str.push_str(password);
+            }
+            
+            conn_str.push('@');
+        }
+        
+        conn_str.push_str(host_port);
+        
+        if let Some(db_name) = &endpoint.database_name {
+            conn_str.push('/');
+            conn_str.push_str(db_name);
+        }
+        
+        Ok(conn_str)
+    }
+
+    fn build_mysql_connection_string(&self, endpoint: &Endpoint) -> Result<String> {
+        // Parse URL to extract host and port
+        let url = &endpoint.url;
+        let parts: Vec<&str> = url.split("://").collect();
+        
+        if parts.len() != 2 {
+            anyhow::bail!("Invalid MySQL URL format");
+        }
+        
+        let host_port = parts[1].trim_end_matches('/');
+        
+        // Build connection string
+        let mut conn_str = format!("mysql://");
+        
+        if let Some(username) = &endpoint.username {
+            conn_str.push_str(username);
+            
+            if let Some(password) = &endpoint.password {
+                conn_str.push(':');
+                conn_str.push_str(password);
+            }
+            
+            conn_str.push('@');
+        }
+        
+        conn_str.push_str(host_port);
+        
+        if let Some(db_name) = &endpoint.database_name {
+            conn_str.push('/');
+            conn_str.push_str(db_name);
+        }
+        
+        Ok(conn_str)
     }
 }
 

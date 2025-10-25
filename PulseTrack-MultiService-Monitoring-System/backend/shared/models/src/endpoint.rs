@@ -13,6 +13,8 @@ pub enum ServiceType {
     Microservice,
     Database,
     Api,
+    Websocket,
+    Grpc,
     Other,
 }
 
@@ -51,6 +53,10 @@ pub struct Endpoint {
     pub updated_at: DateTime<Utc>,
     pub is_active: bool,
     pub auth_header: Option<String>,
+    pub username: Option<String>,
+    pub password: Option<String>,
+    pub database_name: Option<String>,
+    pub connection_params: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Validate, Deserialize)]
@@ -78,6 +84,13 @@ pub struct CreateEndpointRequest {
     pub retry_count: Option<i32>,
     #[validate(length(max = 500))]
     pub auth_header: Option<String>,
+    #[validate(length(max = 255))]
+    pub username: Option<String>,
+    #[validate(length(max = 255))]
+    pub password: Option<String>,
+    #[validate(length(max = 255))]
+    pub database_name: Option<String>,
+    pub connection_params: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Validate, Deserialize)]
@@ -102,6 +115,13 @@ pub struct UpdateEndpointRequest {
     pub is_active: Option<bool>,
     #[validate(length(max = 500))]
     pub auth_header: Option<String>,
+    #[validate(length(max = 255))]
+    pub username: Option<String>,
+    #[validate(length(max = 255))]
+    pub password: Option<String>,
+    #[validate(length(max = 255))]
+    pub database_name: Option<String>,
+    pub connection_params: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize)]

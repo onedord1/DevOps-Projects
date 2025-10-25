@@ -30,7 +30,8 @@ pub async fn list_endpoints(
                expected_status_code, expected_response_time_ms,
                failure_threshold_minutes, retry_count, retry_delay_seconds,
                status, last_check_at, last_status_change_at,
-               created_at, updated_at, is_active, auth_header
+               created_at, updated_at, is_active, auth_header,
+               username, password, database_name, connection_params
         FROM endpoints
         WHERE org_id =
         "#,
@@ -95,7 +96,7 @@ pub async fn get_endpoint(
     let org_id = Uuid::parse_str(&claims.org_id)?;
 
     let endpoint = sqlx::query_as::<sqlx::Postgres, Endpoint>(
-        "SELECT id, org_id, project_id, name, url, service_type, description, tags, owner_contact, check_interval_seconds, timeout_seconds, expected_status_code, expected_response_time_ms, failure_threshold_minutes, retry_count, retry_delay_seconds, status, last_check_at, last_status_change_at, created_at, updated_at, is_active, auth_header FROM endpoints WHERE id = $1 AND org_id = $2"
+        "SELECT id, org_id, project_id, name, url, service_type, description, tags, owner_contact, check_interval_seconds, timeout_seconds, expected_status_code, expected_response_time_ms, failure_threshold_minutes, retry_count, retry_delay_seconds, status, last_check_at, last_status_change_at, created_at, updated_at, is_active, auth_header, username, password, database_name, connection_params FROM endpoints WHERE id = $1 AND org_id = $2"
     )
     .bind(id)
     .bind(org_id)
@@ -118,8 +119,12 @@ pub async fn create_endpoint(
     let id = Uuid::new_v4();
     let tags_json = create_req.tags.as_ref().map(|t| serde_json::to_value(t).unwrap());
 
+    let connection_params_json = create_req.connection_params.as_ref()
+        .map(|cp| cp.clone())
+        .unwrap_or_else(|| serde_json::json!({}));
+
     let endpoint = sqlx::query_as::<sqlx::Postgres, Endpoint>(
-        "INSERT INTO endpoints (id, org_id, project_id, name, url, service_type, description, tags, owner_contact, check_interval_seconds, timeout_seconds, expected_status_code, expected_response_time_ms, failure_threshold_minutes, retry_count, auth_header) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16) RETURNING id, org_id, project_id, name, url, service_type, description, tags, owner_contact, check_interval_seconds, timeout_seconds, expected_status_code, expected_response_time_ms, failure_threshold_minutes, retry_count, retry_delay_seconds, status, last_check_at, last_status_change_at, created_at, updated_at, is_active, auth_header"
+        "INSERT INTO endpoints (id, org_id, project_id, name, url, service_type, description, tags, owner_contact, check_interval_seconds, timeout_seconds, expected_status_code, expected_response_time_ms, failure_threshold_minutes, retry_count, auth_header, username, password, database_name, connection_params) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20) RETURNING id, org_id, project_id, name, url, service_type, description, tags, owner_contact, check_interval_seconds, timeout_seconds, expected_status_code, expected_response_time_ms, failure_threshold_minutes, retry_count, retry_delay_seconds, status, last_check_at, last_status_change_at, created_at, updated_at, is_active, auth_header, username, password, database_name, connection_params"
     )
     .bind(id)
     .bind(org_id)
@@ -137,6 +142,10 @@ pub async fn create_endpoint(
     .bind(create_req.failure_threshold_minutes.unwrap_or(3))
     .bind(create_req.retry_count.unwrap_or(2))
     .bind(&create_req.auth_header)
+    .bind(&create_req.username)
+    .bind(&create_req.password)
+    .bind(&create_req.database_name)
+    .bind(connection_params_json)
     .fetch_one(&state.db)
     .await?;
 
@@ -200,9 +209,10 @@ pub async fn update_endpoint(
 
     // For simplicity, use a simpler approach
     let tags_json = update_req.tags.as_ref().map(|t| serde_json::to_value(t).unwrap());
+    let connection_params_json = update_req.connection_params.as_ref().map(|cp| cp.clone());
     
     let endpoint = sqlx::query_as::<sqlx::Postgres, Endpoint>(
-        "UPDATE endpoints SET project_id = COALESCE($1, project_id), name = COALESCE($2, name), url = COALESCE($3, url), service_type = COALESCE($4, service_type), description = COALESCE($5, description), tags = COALESCE($6, tags), check_interval_seconds = COALESCE($7, check_interval_seconds), timeout_seconds = COALESCE($8, timeout_seconds), expected_status_code = COALESCE($9, expected_status_code), expected_response_time_ms = COALESCE($10, expected_response_time_ms), is_active = COALESCE($11, is_active), auth_header = COALESCE($12, auth_header) WHERE id = $13 AND org_id = $14 RETURNING id, org_id, project_id, name, url, service_type, description, tags, owner_contact, check_interval_seconds, timeout_seconds, expected_status_code, expected_response_time_ms, failure_threshold_minutes, retry_count, retry_delay_seconds, status, last_check_at, last_status_change_at, created_at, updated_at, is_active, auth_header"
+        "UPDATE endpoints SET project_id = COALESCE($1, project_id), name = COALESCE($2, name), url = COALESCE($3, url), service_type = COALESCE($4, service_type), description = COALESCE($5, description), tags = COALESCE($6, tags), check_interval_seconds = COALESCE($7, check_interval_seconds), timeout_seconds = COALESCE($8, timeout_seconds), expected_status_code = COALESCE($9, expected_status_code), expected_response_time_ms = COALESCE($10, expected_response_time_ms), is_active = COALESCE($11, is_active), auth_header = COALESCE($12, auth_header), username = COALESCE($13, username), password = COALESCE($14, password), database_name = COALESCE($15, database_name), connection_params = COALESCE($16, connection_params) WHERE id = $17 AND org_id = $18 RETURNING id, org_id, project_id, name, url, service_type, description, tags, owner_contact, check_interval_seconds, timeout_seconds, expected_status_code, expected_response_time_ms, failure_threshold_minutes, retry_count, retry_delay_seconds, status, last_check_at, last_status_change_at, created_at, updated_at, is_active, auth_header, username, password, database_name, connection_params"
     )
     .bind(&update_req.project_id)
     .bind(&update_req.name)
@@ -216,6 +226,10 @@ pub async fn update_endpoint(
     .bind(update_req.expected_response_time_ms)
     .bind(update_req.is_active)
     .bind(&update_req.auth_header)
+    .bind(&update_req.username)
+    .bind(&update_req.password)
+    .bind(&update_req.database_name)
+    .bind(connection_params_json)
     .bind(id)
     .bind(org_id)
     .fetch_one(&state.db)

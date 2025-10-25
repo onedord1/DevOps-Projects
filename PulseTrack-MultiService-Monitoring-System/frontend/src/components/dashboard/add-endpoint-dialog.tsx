@@ -26,6 +26,10 @@ export function AddEndpointDialog({ open, onOpenChange, onSuccess }: AddEndpoint
     timeout_seconds: 10,
     failure_threshold_minutes: 3,
     auth_header: '',
+    username: '',
+    password: '',
+    database_name: '',
+    database_type: 'postgresql', // postgresql or mysql
     project_id: '',
   })
 
@@ -55,8 +59,42 @@ export function AddEndpointDialog({ open, onOpenChange, onSuccess }: AddEndpoint
     }
   }
 
-  // Check if the service type requires authentication
-  const requiresAuth = formData.service_type !== 'frontend'
+  // Check if the service type requires HTTP authentication header
+  const requiresAuthHeader = ['backend', 'api', 'microservice'].includes(formData.service_type)
+  
+  // Check if the service type requires database credentials
+  const requiresDbCredentials = formData.service_type === 'database'
+  
+  // Detect database type from URL
+  const detectDatabaseType = (url: string): 'postgresql' | 'mysql' => {
+    if (url.includes('mysql') || url.includes('mariadb') || url.includes('3306')) {
+      return 'mysql'
+    }
+    return 'postgresql'
+  }
+  
+  // Auto-detect database type when URL changes
+  const handleUrlChange = (url: string) => {
+    setFormData((prev: any) => ({
+      ...prev,
+      url,
+      database_type: formData.service_type === 'database' ? detectDatabaseType(url) : prev.database_type
+    }))
+  }
+  
+  // Get URL placeholder based on service type
+  const getUrlPlaceholder = () => {
+    switch (formData.service_type) {
+      case 'database':
+        return 'postgresql://localhost:5432 or mysql://localhost:3306'
+      case 'websocket':
+        return 'ws://example.com/ws or wss://example.com/ws'
+      case 'grpc':
+        return 'grpc://example.com:50051'
+      default:
+        return 'https://api.example.com/health'
+    }
+  }
 
   if (!open) return null
 
@@ -99,6 +137,10 @@ export function AddEndpointDialog({ open, onOpenChange, onSuccess }: AddEndpoint
           timeout_seconds: 10,
           failure_threshold_minutes: 3,
           auth_header: '',
+          username: '',
+          password: '',
+          database_name: '',
+          database_type: 'postgresql',
           project_id: '',
         })
       } else {
@@ -146,6 +188,61 @@ export function AddEndpointDialog({ open, onOpenChange, onSuccess }: AddEndpoint
             </div>
           )}
 
+          {/* Row 1: Service Name */}
+          <div className="space-y-2">
+            <label htmlFor="name" className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+              Service Name *
+            </label>
+            <input
+              id="name"
+              type="text"
+              required
+              value={formData.name}
+              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              className="w-full px-4 py-3 border-2 border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-slate-800 transition-all"
+              placeholder="My API Service"
+            />
+          </div>
+
+          {/* Row 2: Service Type */}
+          <div className="space-y-2">
+            <label htmlFor="service_type" className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+              Service Type *
+            </label>
+            <select
+              id="service_type"
+              value={formData.service_type}
+              onChange={(e) => setFormData({ ...formData, service_type: e.target.value as ServiceType })}
+              className="w-full px-4 py-3 border-2 border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-slate-800 transition-all"
+            >
+              <option value="frontend">Frontend (Public)</option>
+              <option value="backend">Backend (HTTP)</option>
+              <option value="microservice">Microservice (HTTP)</option>
+              <option value="api">API (HTTP)</option>
+              <option value="database">Database (PostgreSQL/MySQL)</option>
+              <option value="websocket">WebSocket (ws://)</option>
+              <option value="grpc">gRPC (grpc://)</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+
+          {/* Row 3: URL */}
+          <div className="space-y-2">
+            <label htmlFor="url" className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+              Endpoint URL *
+            </label>
+            <input
+              id="url"
+              type="url"
+              required
+              value={formData.url}
+              onChange={(e) => handleUrlChange(e.target.value)}
+              className="w-full px-4 py-3 border-2 border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-slate-800 transition-all"
+              placeholder={getUrlPlaceholder()}
+            />
+          </div>
+
+          {/* Row 4: Project (optional) */}
           {projects.length > 0 && (
             <div className="space-y-2">
               <label htmlFor="project_id" className="text-sm font-semibold text-slate-700 dark:text-slate-300">
@@ -164,62 +261,11 @@ export function AddEndpointDialog({ open, onOpenChange, onSuccess }: AddEndpoint
                   </option>
                 ))}
               </select>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                Group this endpoint under a project for better organization
-              </p>
             </div>
           )}
 
-          <div className="space-y-2">
-            <label htmlFor="name" className="text-sm font-semibold text-slate-700 dark:text-slate-300">
-              Service Name *
-            </label>
-            <input
-              id="name"
-              type="text"
-              required
-              value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              className="w-full px-4 py-3 border-2 border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-slate-800 transition-all"
-              placeholder="My API Service"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <label htmlFor="url" className="text-sm font-semibold text-slate-700 dark:text-slate-300">
-              Endpoint URL *
-            </label>
-            <input
-              id="url"
-              type="url"
-              required
-              value={formData.url}
-              onChange={(e) => setFormData({ ...formData, url: e.target.value })}
-              className="w-full px-4 py-3 border-2 border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-slate-800 transition-all"
-              placeholder="https://api.example.com/health"
-            />
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <label htmlFor="service_type" className="text-sm font-semibold text-slate-700 dark:text-slate-300">
-                Service Type *
-              </label>
-              <select
-                id="service_type"
-                value={formData.service_type}
-                onChange={(e) => setFormData({ ...formData, service_type: e.target.value as ServiceType })}
-                className="w-full px-4 py-3 border-2 border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-slate-800 transition-all"
-              >
-                <option value="frontend">Frontend (Public)</option>
-                <option value="backend">Backend (Authenticated)</option>
-                <option value="microservice">Microservice (Authenticated)</option>
-                <option value="database">Database (Authenticated)</option>
-                <option value="api">API (Authenticated)</option>
-                <option value="other">Other</option>
-              </select>
-            </div>
-
+          {/* Row 5: Monitoring Configuration */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="space-y-2">
               <label htmlFor="check_interval" className="text-sm font-semibold text-slate-700 dark:text-slate-300">
                 Check Interval (seconds)
@@ -234,10 +280,40 @@ export function AddEndpointDialog({ open, onOpenChange, onSuccess }: AddEndpoint
                 className="w-full px-4 py-3 border-2 border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-slate-800 transition-all"
               />
             </div>
+
+            <div className="space-y-2">
+              <label htmlFor="timeout" className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+                Timeout (seconds)
+              </label>
+              <input
+                id="timeout"
+                type="number"
+                min="1"
+                max="120"
+                value={formData.timeout_seconds}
+                onChange={(e) => setFormData({ ...formData, timeout_seconds: parseInt(e.target.value) })}
+                className="w-full px-4 py-3 border-2 border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-slate-800 transition-all"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label htmlFor="failure_threshold" className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+                Failure Threshold (min)
+              </label>
+              <input
+                id="failure_threshold"
+                type="number"
+                min="1"
+                max="10"
+                value={formData.failure_threshold_minutes}
+                onChange={(e) => setFormData({ ...formData, failure_threshold_minutes: parseInt(e.target.value) })}
+                className="w-full px-4 py-3 border-2 border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-slate-800 transition-all"
+              />
+            </div>
           </div>
 
-          {/* Conditional Auth Header Field */}
-          {requiresAuth && (
+          {/* Conditional Auth Header Field for HTTP services */}
+          {requiresAuthHeader && (
             <div className="space-y-2 bg-blue-50 dark:bg-blue-900/20 border-2 border-blue-200 dark:border-blue-800 rounded-xl p-4">
               <div className="flex items-center gap-2 mb-2">
                 <Lock className="h-5 w-5 text-blue-600 dark:text-blue-400" />
@@ -263,37 +339,90 @@ export function AddEndpointDialog({ open, onOpenChange, onSuccess }: AddEndpoint
             </div>
           )}
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <label htmlFor="timeout" className="text-sm font-semibold text-slate-700 dark:text-slate-300">
-                Timeout (seconds)
-              </label>
-              <input
-                id="timeout"
-                type="number"
-                min="1"
-                max="120"
-                value={formData.timeout_seconds}
-                onChange={(e) => setFormData({ ...formData, timeout_seconds: parseInt(e.target.value) })}
-                className="w-full px-4 py-3 border-2 border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-slate-800 transition-all"
-              />
+          {/* Conditional Database Credentials */}
+          {requiresDbCredentials && (
+            <div className="space-y-4 bg-purple-50 dark:bg-purple-900/20 border-2 border-purple-200 dark:border-purple-800 rounded-xl p-4">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <Lock className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                  <h3 className="text-sm font-semibold text-purple-900 dark:text-purple-100">
+                    Database Credentials
+                  </h3>
+                </div>
+                <select
+                  value={formData.database_type}
+                  onChange={(e) => setFormData({ ...formData, database_type: e.target.value })}
+                  className="px-3 py-1.5 text-xs border-2 border-purple-200 dark:border-purple-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white dark:bg-slate-800"
+                >
+                  <option value="postgresql">PostgreSQL</option>
+                  <option value="mysql">MySQL/MariaDB</option>
+                </select>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label htmlFor="username" className="text-sm font-semibold text-purple-900 dark:text-purple-100">
+                    Username *
+                  </label>
+                  <input
+                    id="username"
+                    type="text"
+                    required
+                    value={formData.username}
+                    onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+                    className="w-full px-4 py-3 border-2 border-purple-200 dark:border-purple-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-slate-800 transition-all"
+                    placeholder={formData.database_type === 'postgresql' ? 'postgres' : 'root'}
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <label htmlFor="password" className="text-sm font-semibold text-purple-900 dark:text-purple-100">
+                    Password *
+                  </label>
+                  <input
+                    id="password"
+                    type="password"
+                    required
+                    value={formData.password}
+                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                    className="w-full px-4 py-3 border-2 border-purple-200 dark:border-purple-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-slate-800 transition-all"
+                    placeholder={formData.database_type === 'postgresql' ? 'Required for connection' : 'Required for connection'}
+                  />
+                </div>
+              </div>
+              
+              <div className="space-y-2">
+                <label htmlFor="database_name" className="text-sm font-semibold text-purple-900 dark:text-purple-100">
+                  Database Name
+                </label>
+                <input
+                  id="database_name"
+                  type="text"
+                  value={formData.database_name}
+                  onChange={(e) => setFormData({ ...formData, database_name: e.target.value })}
+                  className="w-full px-4 py-3 border-2 border-purple-200 dark:border-purple-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-slate-800 transition-all"
+                  placeholder={formData.database_type === 'postgresql' ? 'monitoring_system' : 'mydb'}
+                />
+              </div>
+              
+              <div className="flex items-start gap-2 mt-2">
+                <Info className="h-4 w-4 text-purple-600 dark:text-purple-400 flex-shrink-0 mt-0.5" />
+                <p className="text-xs text-purple-700 dark:text-purple-300">
+                  {formData.database_type === 'postgresql' ? (
+                    <>
+                      <strong>PostgreSQL:</strong> Creates actual database connection and executes <code className="bg-purple-200 dark:bg-purple-800 px-1 rounded">SELECT 1</code> query.<br />
+                      Both <strong>username and password are required</strong> for authentication.
+                    </>
+                  ) : (
+                    <>
+                      <strong>MySQL/MariaDB:</strong> Creates actual database connection and executes <code className="bg-purple-200 dark:bg-purple-800 px-1 rounded">SELECT 1</code> query.<br />
+                      Both <strong>username and password are required</strong> for authentication.
+                    </>
+                  )}
+                </p>
+              </div>
             </div>
-
-            <div className="space-y-2">
-              <label htmlFor="failure_threshold" className="text-sm font-semibold text-slate-700 dark:text-slate-300">
-                Failure Threshold (minutes)
-              </label>
-              <input
-                id="failure_threshold"
-                type="number"
-                min="1"
-                max="10"
-                value={formData.failure_threshold_minutes}
-                onChange={(e) => setFormData({ ...formData, failure_threshold_minutes: parseInt(e.target.value) })}
-                className="w-full px-4 py-3 border-2 border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-slate-800 transition-all"
-              />
-            </div>
-          </div>
+          )}
 
           <div className="space-y-2">
             <label htmlFor="description" className="text-sm font-semibold text-slate-700 dark:text-slate-300">

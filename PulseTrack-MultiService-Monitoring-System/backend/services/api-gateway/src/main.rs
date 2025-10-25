@@ -84,6 +84,15 @@ async fn main() -> Result<()> {
         .route("/api/v1/api-keys", get(handlers::api_keys::list_api_keys))
         .route("/api/v1/api-keys", post(handlers::api_keys::create_api_key))
         .route("/api/v1/api-keys/:id", delete(handlers::api_keys::delete_api_key))
+        
+        .route("/api/v1/incidents", get(handlers::incidents::get_incidents))
+        .route("/api/v1/incidents", post(handlers::incidents::create_incident))
+        .route("/api/v1/incidents/stats", get(handlers::incidents::get_incident_stats))
+        .route("/api/v1/incidents/:id", get(handlers::incidents::get_incident))
+        .route("/api/v1/incidents/:id", put(handlers::incidents::update_incident))
+        .route("/api/v1/incidents/:id", delete(handlers::incidents::delete_incident))
+        .route("/api/v1/incidents/:id/state", put(handlers::incidents::change_incident_state))
+        .route("/api/v1/incidents/:id/history", get(handlers::incidents::get_incident_history))
         .layer(axum_middleware::from_fn_with_state(
             state.clone(),
             middleware::auth::auth_middleware,

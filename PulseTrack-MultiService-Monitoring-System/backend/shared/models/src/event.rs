@@ -57,6 +57,11 @@ pub enum Event {
         success: bool,
         timestamp: DateTime<Utc>,
     },
+    Custom {
+        event_type: String,
+        data: serde_json::Value,
+        timestamp: DateTime<Utc>,
+    },
 }
 
 impl Event {
@@ -68,6 +73,7 @@ impl Event {
             Event::EndpointRecovered { .. } => "endpoint_recovered",
             Event::OrgMajorOutage { .. } => "org_major_outage",
             Event::NotificationSent { .. } => "notification_sent",
+            Event::Custom { event_type, .. } => event_type,
         }
     }
 
@@ -79,6 +85,7 @@ impl Event {
             Event::EndpointRecovered { org_id, .. } => *org_id,
             Event::OrgMajorOutage { org_id, .. } => *org_id,
             Event::NotificationSent { org_id, .. } => *org_id,
+            Event::Custom { .. } => Uuid::nil(), // Custom events don't have org_id
         }
     }
 }
