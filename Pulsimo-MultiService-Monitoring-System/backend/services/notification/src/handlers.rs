@@ -28,27 +28,27 @@ impl NotificationHandler {
 
     pub async fn handle_event(&self, event: Event) -> Result<()> {
         match &event {
-            Event::EndpointDownThresholdReached { org_id, endpoint_name, endpoint_url, .. } => {
+            Event::EndpointDownThresholdReached { org_id, endpoint_id, endpoint_name, endpoint_url, .. } => {
                 let subject = format!("🚨 Service Down: {}", endpoint_name);
                 let message = format!(
                     "Service {} ({}) is currently down and has exceeded the failure threshold.",
                     endpoint_name, endpoint_url
                 );
-                self.send_notifications(*org_id, NotificationType::EndpointDown, subject, message).await?;
+                self.send_notifications(*org_id, Some(*endpoint_id), NotificationType::EndpointDown, subject, message).await?;
             }
-            Event::EndpointRecovered { org_id, endpoint_name, downtime_duration_seconds, .. } => {
+            Event::EndpointRecovered { org_id, endpoint_id, endpoint_name, downtime_duration_seconds, .. } => {
                 let subject = format!("✅ Service Recovered: {}", endpoint_name);
                 let message = format!(
                     "Service {} has recovered after being down for {} seconds.",
                     endpoint_name, downtime_duration_seconds
                 );
-                self.send_notifications(*org_id, NotificationType::EndpointRecovered, subject, message).await?;
+                self.send_notifications(*org_id, Some(*endpoint_id), NotificationType::EndpointRecovered, subject, message).await?;
             }
-            Event::EndpointStatusChanged { org_id, endpoint_name, new_status, .. } => {
+            Event::EndpointStatusChanged { org_id, endpoint_id, endpoint_name, new_status, .. } => {
                 if *new_status == models::EndpointStatus::PartialOutage {
                     let subject = format!("⚠️ Service Degraded: {}", endpoint_name);
                     let message = format!("Service {} is experiencing partial outage.", endpoint_name);
-                    self.send_notifications(*org_id, NotificationType::EndpointPartialOutage, subject, message).await?;
+                    self.send_notifications(*org_id, Some(*endpoint_id), NotificationType::EndpointPartialOutage, subject, message).await?;
                 }
             }
             Event::OrgMajorOutage { org_id, down_endpoints_count, total_endpoints_count, .. } => {
@@ -57,7 +57,7 @@ impl NotificationHandler {
                     "Major outage detected: {} out of {} services are currently down.",
                     down_endpoints_count, total_endpoints_count
                 );
-                self.send_notifications(*org_id, NotificationType::OrgMajorOutage, subject, message).await?;
+                self.send_notifications(*org_id, None, NotificationType::OrgMajorOutage, subject, message).await?;
             }
             _ => {}
         }
@@ -68,6 +68,7 @@ impl NotificationHandler {
     async fn send_notifications(
         &self,
         org_id: Uuid,
+        endpoint_id: Option<Uuid>,
         notification_type: NotificationType,
         subject: String,
         message: String,
@@ -80,7 +81,38 @@ impl NotificationHandler {
         .fetch_all(&self.db)
         .await?;
 
+        // Deactivate expired silences
+        sqlx::query("SELECT deactivate_expired_silences()")
+            .execute(&self.db)
+            .await?;
+
         for channel in channels {
+            // Check if this endpoint is silenced for this channel
+            if let Some(ep_id) = endpoint_id {
+                let is_silenced: bool = sqlx::query_scalar(
+                    "SELECT EXISTS(
+                        SELECT 1 FROM notification_silences
+                        WHERE endpoint_id = $1
+                        AND org_id = $2
+                        AND (channel_id = $3 OR channel_id IS NULL)
+                        AND is_active = true
+                    )"
+                )
+                .bind(ep_id)
+                .bind(org_id)
+                .bind(channel.id)
+                .fetch_one(&self.db)
+                .await?;
+
+                if is_silenced {
+                    tracing::info!(
+                        "Skipping notification for silenced endpoint: endpoint_id={}, channel_id={}",
+                        ep_id,
+                        channel.id
+                    );
+                    continue;
+                }
+            }
             let notification_id = Uuid::new_v4();
 
             // Create notification record

@@ -223,6 +223,48 @@ class ApiClient {
     return data
   }
 
+  // Notification Silences
+  async createSilence(silenceData: {
+    endpoint_id: string
+    channel_id?: string | null
+    reason?: string
+    silence_type: 'temporary' | 'permanent'
+    duration_minutes?: number
+  }) {
+    const { data } = await this.client.post<ApiResponse<any>>('/silences', silenceData)
+    return data
+  }
+
+  async getSilences() {
+    const { data } = await this.client.get<ApiResponse<any[]>>('/silences')
+    return data
+  }
+
+  async unmuteEndpoint(endpointId: string, channelId?: string | null) {
+    const { data } = await this.client.post<ApiResponse<void>>('/silences/unmute', {
+      endpoint_id: endpointId,
+      channel_id: channelId,
+    })
+    return data
+  }
+
+  async checkSilence(endpointId: string, channelId: string) {
+    const { data } = await this.client.get<ApiResponse<any>>('/silences/check', {
+      params: { endpoint_id: endpointId, channel_id: channelId },
+    })
+    return data
+  }
+
+  async getEndpointSilenceStatus(endpointId: string) {
+    const { data } = await this.client.get<ApiResponse<any[]>>(`/silences/endpoint/${endpointId}`)
+    return data
+  }
+
+  async getSilencePresets() {
+    const { data } = await this.client.get<ApiResponse<any[]>>('/silences/presets')
+    return data
+  }
+
   // Users
   async getUsers() {
     const { data } = await this.client.get<ApiResponse<User[]>>('/users')

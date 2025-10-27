@@ -79,6 +79,14 @@ async fn main() -> Result<()> {
         .route("/api/v1/notifications", get(handlers::notifications::list_notifications))
         .route("/api/v1/notifications/acknowledge", post(handlers::notifications::acknowledge_notifications))
         
+        // Notification silences
+        .route("/api/v1/silences", post(handlers::notifications::create_silence))
+        .route("/api/v1/silences", get(handlers::notifications::list_silences))
+        .route("/api/v1/silences/unmute", post(handlers::notifications::unmute_endpoint))
+        .route("/api/v1/silences/check", get(handlers::notifications::check_silence))
+        .route("/api/v1/silences/presets", get(handlers::notifications::get_silence_presets))
+        .route("/api/v1/silences/endpoint/:endpoint_id", get(handlers::notifications::get_endpoint_silence_status))
+        
         .route("/api/v1/users", get(handlers::users::list_users))
         .route("/api/v1/users", post(handlers::users::create_user))
         .route("/api/v1/users/:id", put(handlers::users::update_user))

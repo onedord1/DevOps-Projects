@@ -1,13 +1,14 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { getStatusColor, getStatusBadgeColor, formatRelativeTime, cn } from '@/lib/utils'
-import { ExternalLink, Clock, Activity, CheckCircle2, AlertTriangle, XCircle, HelpCircle, Edit2, Trash2 } from 'lucide-react'
+import { ExternalLink, Clock, Activity, CheckCircle2, AlertTriangle, XCircle, HelpCircle, Edit2, Trash2, Bell, BellOff } from 'lucide-react'
 import type { Endpoint } from '@/types'
 import { ServiceDetailDialog } from './service-detail-dialog'
 import { EditEndpointDialog } from './edit-endpoint-dialog'
+import { SilenceDialog } from '../silence-dialog'
 import { apiClient } from '@/lib/api-client'
 
 interface ServiceCardProps {
@@ -19,8 +20,30 @@ export function ServiceCard({ endpoint, onUpdate }: ServiceCardProps) {
   const [showDetail, setShowDetail] = useState(false)
   const [showEdit, setShowEdit] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [showSilence, setShowSilence] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [isAnimating, setIsAnimating] = useState(false)
+  const [silenceStatus, setSilenceStatus] = useState<any[]>([])
+  const [isLoadingSilences, setIsLoadingSilences] = useState(false)
+
+  // Load silence status when component mounts or endpoint changes
+  useEffect(() => {
+    loadSilenceStatus()
+  }, [endpoint.id])
+
+  const loadSilenceStatus = async () => {
+    try {
+      setIsLoadingSilences(true)
+      const response = await apiClient.getEndpointSilenceStatus(endpoint.id)
+      if (response.success && response.data) {
+        setSilenceStatus(response.data)
+      }
+    } catch (error) {
+      console.error('Failed to load silence status:', error)
+    } finally {
+      setIsLoadingSilences(false)
+    }
+  }
 
   const handleStatusChange = () => {
     setIsAnimating(true)
@@ -109,6 +132,32 @@ export function ServiceCard({ endpoint, onUpdate }: ServiceCardProps) {
             
             {/* Action Buttons */}
             <div className="flex items-center gap-1">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setShowSilence(true)
+                }}
+                className={`p-2 rounded-lg transition-all duration-200 group/btn relative ${
+                  silenceStatus.length > 0 
+                    ? 'bg-violet-100 dark:bg-violet-900/50 hover:bg-violet-200 dark:hover:bg-violet-900/70' 
+                    : 'hover:bg-violet-100 dark:hover:bg-violet-900/50'
+                }`}
+                title={silenceStatus.length > 0 ? `${silenceStatus.length} active silence(s)` : 'Silence notifications'}
+              >
+                {silenceStatus.length > 0 ? (
+                  <BellOff className="h-4 w-4 text-violet-600 dark:text-violet-400 animate-pulse" />
+                ) : (
+                  <Bell className="h-4 w-4 text-slate-500 group-hover/btn:text-violet-600 dark:group-hover/btn:text-violet-400 transition-colors" />
+                )}
+                {silenceStatus.length > 0 && (
+                  <span className="absolute -top-1 -right-1 flex h-5 w-5">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-violet-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-5 w-5 bg-violet-500 text-white text-[10px] items-center justify-center font-bold">
+                      {silenceStatus.length}
+                    </span>
+                  </span>
+                )}
+              </button>
               <button
                 onClick={(e) => {
                   e.stopPropagation()
@@ -268,6 +317,17 @@ export function ServiceCard({ endpoint, onUpdate }: ServiceCardProps) {
           </div>
         </div>
       )}
+
+      {/* Silence Dialog */}
+      <SilenceDialog
+        open={showSilence}
+        onOpenChange={setShowSilence}
+        endpoint={{ id: endpoint.id, name: endpoint.name }}
+        onSilenceCreated={() => {
+          onUpdate()
+          loadSilenceStatus() // Reload silence status after creating/removing
+        }}
+      />
     </>
   )
 }

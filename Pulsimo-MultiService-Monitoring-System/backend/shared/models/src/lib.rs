@@ -8,6 +8,7 @@ pub mod event;
 pub mod api_key;
 pub mod project;
 pub mod incident;
+pub mod silence;
 
 pub use organization::*;
 pub use endpoint::*;
@@ -19,6 +20,7 @@ pub use event::*;
 pub use api_key::*;
 pub use project::*;
 pub use incident::*;
+pub use silence::*;
 
 use serde::{Deserialize, Serialize};
 

@@ -1,0 +1,404 @@
+'use client'
+
+import { useState, useEffect } from 'react'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { Button } from '@/components/ui/button'
+import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
+import { Input } from '@/components/ui/input'
+import { Badge } from '@/components/ui/badge'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Bell, BellOff, Clock, Infinity, Loader2, Trash2, Volume2, VolumeX } from 'lucide-react'
+import { useToast } from '@/hooks/use-toast'
+import { apiClient } from '@/lib/api-client'
+
+interface NotificationChannel {
+  id: string
+  name: string
+  channel_type: string
+}
+
+interface ActiveSilence {
+  id: string
+  channel_id: string | null
+  channel_name?: string
+  silence_type: 'temporary' | 'permanent'
+  expires_at?: string
+  reason?: string
+}
+
+interface SilenceDialogProps {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  endpoint: {
+    id: string
+    name: string
+  }
+  onSilenceCreated?: () => void
+}
+
+const DURATION_PRESETS = [
+  { label: '1 hour', value: 60, icon: '⏱️' },
+  { label: '4 hours', value: 240, icon: '🕐' },
+  { label: '12 hours', value: 720, icon: '🕛' },
+  { label: '24 hours', value: 1440, icon: '📅' },
+  { label: '3 days', value: 4320, icon: '📆' },
+  { label: '1 week', value: 10080, icon: '🗓️' },
+]
+
+export function SilenceDialog({ open, onOpenChange, endpoint, onSilenceCreated }: SilenceDialogProps) {
+  const [channels, setChannels] = useState<NotificationChannel[]>([])
+  const [selectedChannelIds, setSelectedChannelIds] = useState<Set<string>>(new Set())
+  const [silenceAll, setSilenceAll] = useState<boolean>(false)
+  const [activeSilences, setActiveSilences] = useState<ActiveSilence[]>([])
+  const [silenceType, setSilenceType] = useState<'temporary' | 'permanent'>('temporary')
+  const [durationMinutes, setDurationMinutes] = useState<number>(60)
+  const [customDuration, setCustomDuration] = useState<string>('60')
+  const [reason, setReason] = useState<string>('')
+  const [isLoading, setIsLoading] = useState(false)
+  const [view, setView] = useState<'create' | 'manage'>('create')
+  const { toast } = useToast()
+
+  // Load notification channels and active silences
+  useEffect(() => {
+    if (open) {
+      loadData()
+    }
+  }, [open])
+
+  const loadData = async () => {
+    try {
+      // Load channels
+      const channelsResponse = await apiClient.getNotificationChannels()
+      if (channelsResponse.success && channelsResponse.data) {
+        setChannels(channelsResponse.data)
+      }
+
+      // Load active silences for this endpoint
+      const silencesResponse = await apiClient.getEndpointSilenceStatus(endpoint.id)
+      if (silencesResponse.success && silencesResponse.data) {
+        setActiveSilences(silencesResponse.data)
+        
+        // Set initial view based on whether silences exist
+        if (silencesResponse.data.length > 0) {
+          setView('manage')
+        } else {
+          setView('create')
+        }
+      }
+    } catch (error) {
+      console.error('Failed to load data:', error)
+    }
+  }
+
+  const handleDurationChange = (value: number) => {
+    setDurationMinutes(value)
+    setCustomDuration(value.toString())
+  }
+
+  const handleCustomDurationChange = (value: string) => {
+    setCustomDuration(value)
+    const parsed = parseInt(value)
+    if (!isNaN(parsed) && parsed > 0) {
+      setDurationMinutes(parsed)
+    }
+  }
+
+  const handleToggleChannel = (channelId: string) => {
+    const newSet = new Set(selectedChannelIds)
+    if (newSet.has(channelId)) {
+      newSet.delete(channelId)
+    } else {
+      newSet.add(channelId)
+    }
+    setSelectedChannelIds(newSet)
+    setSilenceAll(false) // Uncheck "all" if individual channels are selected
+  }
+
+  const handleToggleSilenceAll = () => {
+    setSilenceAll(!silenceAll)
+    if (!silenceAll) {
+      setSelectedChannelIds(new Set()) // Clear individual selections
+    }
+  }
+
+  const handleUnmute = async (silenceId: string, channelName?: string) => {
+    try {
+      await apiClient.unmuteEndpoint(endpoint.id, silenceId)
+      toast({
+        title: '🔔 Notifications Unmuted',
+        description: `${endpoint.name} ${channelName ? `on ${channelName}` : '(all channels)'}`,
+      })
+      loadData()
+      onSilenceCreated?.()
+    } catch (error) {
+      console.error('Failed to unmute:', error)
+      toast({
+        title: 'Error',
+        description: 'Failed to unmute notifications',
+        variant: 'destructive',
+      })
+    }
+  }
+
+  const handleSubmit = async () => {
+    // Validate selection
+    if (!silenceAll && selectedChannelIds.size === 0) {
+      toast({
+        title: 'Selection Required',
+        description: 'Please select at least one channel or "All Channels"',
+        variant: 'destructive',
+      })
+      return
+    }
+
+    setIsLoading(true)
+    try {
+      const channelsToSilence = silenceAll 
+        ? [null] // null means all channels
+        : Array.from(selectedChannelIds)
+
+      // Create silences for each selected channel
+      for (const channelId of channelsToSilence) {
+        const silenceData = {
+          endpoint_id: endpoint.id,
+          channel_id: channelId,
+          reason: reason.trim() || undefined,
+          silence_type: silenceType,
+          duration_minutes: silenceType === 'temporary' ? durationMinutes : undefined,
+        }
+
+        await apiClient.createSilence(silenceData)
+      }
+
+      const response = { success: true }
+      
+      if (response.success) {
+        // Get channel name for display
+        const channelName = selectedChannelId === 'all' 
+          ? 'all channels'
+          : channels.find(c => c.id === selectedChannelId)?.name || 'selected channel'
+
+        // Show success toast with beautiful formatting
+        const durationText = silenceType === 'temporary' 
+          ? durationMinutes < 60 
+            ? `${durationMinutes} minutes` 
+            : `${Math.floor(durationMinutes / 60)} hours`
+          : 'until manually unmuted';
+
+        toast({
+          title: '🔕 Notifications Silenced',
+          description: `${endpoint.name} on ${channelName} - ${silenceType === 'temporary' ? `Will resume after ${durationText}` : `Silenced ${durationText}`}`,
+        })
+
+        // Reset form
+        setSelectedChannelId('all')
+        setSilenceType('temporary')
+        setDurationMinutes(60)
+        setCustomDuration('60')
+        setReason('')
+        
+        onOpenChange(false)
+        onSilenceCreated?.()
+      }
+    } catch (error: any) {
+      console.error('Failed to create silence:', error)
+      toast({
+        title: 'Error',
+        description: error.response?.data?.error || 'Failed to silence notifications',
+        variant: 'destructive',
+      })
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-[550px] bg-gradient-to-br from-white to-slate-50 dark:from-slate-900 dark:to-slate-950 border-slate-200 dark:border-slate-800">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2 text-2xl">
+            <div className="relative">
+              <Bell className="h-6 w-6 text-violet-600" />
+              <div className="absolute -top-1 -right-1 h-3 w-3 bg-red-500 rounded-full animate-pulse" />
+            </div>
+            Silence Notifications
+          </DialogTitle>
+          <DialogDescription className="text-slate-600 dark:text-slate-400">
+            Temporarily or permanently stop notifications for <strong className="text-slate-900 dark:text-white">{endpoint.name}</strong>
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="grid gap-6 py-4">
+          {/* Channel Selection */}
+          <div className="space-y-3">
+            <Label className="text-sm font-semibold flex items-center gap-2">
+              📢 Which notification channels?
+            </Label>
+            <RadioGroup value={selectedChannelId} onValueChange={setSelectedChannelId}>
+              <div className="flex items-center space-x-3 p-3 rounded-lg border-2 border-slate-200 dark:border-slate-700 hover:bg-violet-50 dark:hover:bg-violet-950/20 transition-colors cursor-pointer">
+                <RadioGroupItem value="all" id="all" />
+                <Label htmlFor="all" className="flex-1 cursor-pointer font-medium">
+                  All Channels 🔊
+                  <span className="block text-xs text-slate-500 dark:text-slate-400 font-normal mt-0.5">
+                    Silence notifications across all configured channels
+                  </span>
+                </Label>
+              </div>
+              
+              {channels.length > 0 && (
+                <div className="space-y-2 mt-2">
+                  {channels.map((channel) => (
+                    <div
+                      key={channel.id}
+                      className="flex items-center space-x-3 p-3 rounded-lg border-2 border-slate-200 dark:border-slate-700 hover:bg-blue-50 dark:hover:bg-blue-950/20 transition-colors cursor-pointer"
+                    >
+                      <RadioGroupItem value={channel.id} id={channel.id} />
+                      <Label htmlFor={channel.id} className="flex-1 cursor-pointer font-medium">
+                        {channel.name}
+                        <span className="block text-xs text-slate-500 dark:text-slate-400 font-normal mt-0.5">
+                          {channel.channel_type}
+                        </span>
+                      </Label>
+                      <Badge variant="outline" className="text-xs">
+                        {channel.channel_type}
+                      </Badge>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </RadioGroup>
+          </div>
+
+          {/* Silence Type */}
+          <div className="space-y-3">
+            <Label className="text-sm font-semibold flex items-center gap-2">
+              ⏰ How long?
+            </Label>
+            <RadioGroup value={silenceType} onValueChange={(value) => setSilenceType(value as 'temporary' | 'permanent')}>
+              <div className="flex items-center space-x-3 p-3 rounded-lg border-2 border-slate-200 dark:border-slate-700 hover:bg-amber-50 dark:hover:bg-amber-950/20 transition-colors cursor-pointer">
+                <RadioGroupItem value="temporary" id="temporary" />
+                <Label htmlFor="temporary" className="flex-1 cursor-pointer font-medium">
+                  <Clock className="inline h-4 w-4 mr-2" />
+                  Temporary
+                  <span className="block text-xs text-slate-500 dark:text-slate-400 font-normal mt-0.5">
+                    Auto-resume after a specific duration
+                  </span>
+                </Label>
+              </div>
+              
+              <div className="flex items-center space-x-3 p-3 rounded-lg border-2 border-slate-200 dark:border-slate-700 hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors cursor-pointer">
+                <RadioGroupItem value="permanent" id="permanent" />
+                <Label htmlFor="permanent" className="flex-1 cursor-pointer font-medium">
+                  <Infinity className="inline h-4 w-4 mr-2" />
+                  Permanent
+                  <span className="block text-xs text-slate-500 dark:text-slate-400 font-normal mt-0.5">
+                    Silence until manually unmuted
+                  </span>
+                </Label>
+              </div>
+            </RadioGroup>
+          </div>
+
+          {/* Duration Selection (only for temporary) */}
+          {silenceType === 'temporary' && (
+            <div className="space-y-3">
+              <Label className="text-sm font-semibold">Select Duration</Label>
+              <div className="grid grid-cols-3 gap-2">
+                {DURATION_PRESETS.map((preset) => (
+                  <Button
+                    key={preset.value}
+                    type="button"
+                    variant={durationMinutes === preset.value ? "default" : "outline"}
+                    className={`h-auto py-3 ${
+                      durationMinutes === preset.value
+                        ? 'bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700'
+                        : ''
+                    }`}
+                    onClick={() => handleDurationChange(preset.value)}
+                  >
+                    <span className="flex flex-col items-center gap-1">
+                      <span className="text-lg">{preset.icon}</span>
+                      <span className="text-xs font-medium">{preset.label}</span>
+                    </span>
+                  </Button>
+                ))}
+              </div>
+              
+              <div className="flex items-center gap-2 mt-3">
+                <Label htmlFor="custom-duration" className="text-xs text-slate-600 dark:text-slate-400 whitespace-nowrap">
+                  Custom (minutes):
+                </Label>
+                <Input
+                  id="custom-duration"
+                  type="number"
+                  min="1"
+                  max="43200"
+                  value={customDuration}
+                  onChange={(e) => handleCustomDurationChange(e.target.value)}
+                  className="flex-1"
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Optional Reason */}
+          <div className="space-y-3">
+            <Label htmlFor="reason" className="text-sm font-semibold">
+              📝 Reason (optional)
+            </Label>
+            <Textarea
+              id="reason"
+              placeholder="e.g., Planned maintenance, Testing, Known issue..."
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              className="resize-none"
+              rows={3}
+              maxLength={500}
+            />
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              {reason.length}/500 characters
+            </p>
+          </div>
+        </div>
+
+        <DialogFooter className="gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+            disabled={isLoading}
+          >
+            Cancel
+          </Button>
+          <Button
+            type="submit"
+            onClick={handleSubmit}
+            disabled={isLoading}
+            className="bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700"
+          >
+            {isLoading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Silencing...
+              </>
+            ) : (
+              <>
+                <BellOff className="mr-2 h-4 w-4" />
+                Silence Notifications
+              </>
+            )}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
