@@ -265,6 +265,35 @@ class ApiClient {
     return data
   }
 
+  // Analytics
+  async getUptimeMetrics(endpointId: string, period: string = '30d') {
+    const { data } = await this.client.get<ApiResponse<any>>(`/analytics/uptime/${endpointId}`, {
+      params: { period }
+    })
+    return data
+  }
+
+  async getResponseTimeData(endpointId: string, period: string = '7d') {
+    const { data } = await this.client.get<ApiResponse<any[]>>(`/analytics/response-times/${endpointId}`, {
+      params: { period }
+    })
+    return data
+  }
+
+  async getDowntimePeriods(endpointId: string, period: string = '30d') {
+    const { data } = await this.client.get<ApiResponse<any[]>>(`/analytics/downtime/${endpointId}`, {
+      params: { period }
+    })
+    return data
+  }
+
+  async getTimeline(endpointId: string, period: string = '24h') {
+    const { data } = await this.client.get<ApiResponse<any[]>>(`/analytics/timeline/${endpointId}`, {
+      params: { period }
+    })
+    return data
+  }
+
   // Users
   async getUsers() {
     const { data } = await this.client.get<ApiResponse<User[]>>('/users')

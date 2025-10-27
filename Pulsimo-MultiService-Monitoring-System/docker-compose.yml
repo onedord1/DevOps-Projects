@@ -91,6 +91,23 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
+  maintenance-scheduler:
+    build:
+      context: ./backend/services/maintenance-scheduler
+      dockerfile: Dockerfile
+    container_name: monitoring-maintenance
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: monitoring_system
+      DB_USER: monitoring
+      DB_PASSWORD: monitoring_password
+      TZ: UTC
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
   frontend:
     build:
       context: ./frontend

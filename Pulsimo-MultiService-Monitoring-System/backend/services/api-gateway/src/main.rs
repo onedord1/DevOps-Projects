@@ -104,6 +104,13 @@ async fn main() -> Result<()> {
         .route("/api/v1/incidents/:id", delete(handlers::incidents::delete_incident))
         .route("/api/v1/incidents/:id/state", put(handlers::incidents::change_incident_state))
         .route("/api/v1/incidents/:id/history", get(handlers::incidents::get_incident_history))
+        
+        // Analytics
+        .route("/api/v1/analytics/uptime/:endpoint_id", get(handlers::analytics::get_uptime_metrics))
+        .route("/api/v1/analytics/response-times/:endpoint_id", get(handlers::analytics::get_response_time_data))
+        .route("/api/v1/analytics/downtime/:endpoint_id", get(handlers::analytics::get_downtime_periods))
+        .route("/api/v1/analytics/timeline/:endpoint_id", get(handlers::analytics::get_timeline))
+        
         .layer(axum_middleware::from_fn_with_state(
             state.clone(),
             middleware::auth::auth_middleware,

@@ -148,7 +148,7 @@ export function SilenceDialog({ open, onOpenChange, endpoint, onSilenceCreated }
     }
   }
 
-  const handleUnmute = async (channelId: string | null, channelName?: string) => {
+  const handleUnmute = async (channelId: string | null, channelName?: string | null) => {
     try {
       await apiClient.unmuteEndpoint(endpoint.id, channelId)
       toast({
@@ -241,7 +241,7 @@ export function SilenceDialog({ open, onOpenChange, endpoint, onSilenceCreated }
     }
   }
 
-  const formatTimeRemaining = (expiresAt?: string) => {
+  const formatTimeRemaining = (expiresAt?: string | null) => {
     if (!expiresAt) return 'Permanent'
     
     const now = new Date()

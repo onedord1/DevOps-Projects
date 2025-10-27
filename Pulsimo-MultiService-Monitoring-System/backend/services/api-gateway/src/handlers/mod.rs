@@ -8,6 +8,7 @@ pub mod users;
 pub mod api_keys;
 pub mod projects;
 pub mod incidents;
+pub mod analytics;
 
 use axum::{
     http::StatusCode,

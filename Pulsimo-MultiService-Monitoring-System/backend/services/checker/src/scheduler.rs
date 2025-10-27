@@ -135,6 +135,20 @@ impl CheckerScheduler {
         .execute(db)
         .await?;
 
+        // Record in status_history for analytics
+        let status_str = format!("{:?}", endpoint.status).to_uppercase();
+        sqlx::query(
+            "INSERT INTO status_history (endpoint_id, status, response_time_ms, status_code, error_message, checked_at) 
+             VALUES ($1, $2, $3, $4, $5, NOW())"
+        )
+        .bind(endpoint.id)
+        .bind(&status_str)
+        .bind(result.response_time_ms)
+        .bind(result.status_code)
+        .bind(&result.error_message)
+        .execute(db)
+        .await?;
+
         // Update endpoint last_check_at
         sqlx::query(
             "UPDATE endpoints SET last_check_at = NOW() WHERE id = $1"
@@ -271,18 +285,6 @@ impl CheckerScheduler {
         )
         .bind(&new_status)
         .bind(endpoint.id)
-        .execute(db)
-        .await?;
-
-        // Record in status history
-        sqlx::query(
-            "INSERT INTO status_history (id, endpoint_id, old_status, new_status, downtime_seconds) VALUES ($1, $2, $3, $4, $5)"
-        )
-        .bind(Uuid::new_v4())
-        .bind(endpoint.id)
-        .bind(&old_status)
-        .bind(&new_status)
-        .bind(downtime_seconds.map(|s| s as i32))
         .execute(db)
         .await?;
 

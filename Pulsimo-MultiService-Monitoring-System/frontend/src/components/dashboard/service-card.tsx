@@ -4,7 +4,8 @@ import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { getStatusColor, getStatusBadgeColor, formatRelativeTime, cn } from '@/lib/utils'
-import { ExternalLink, Clock, Activity, CheckCircle2, AlertTriangle, XCircle, HelpCircle, Edit2, Trash2, Bell, BellOff } from 'lucide-react'
+import { ExternalLink, Clock, Activity, CheckCircle2, AlertTriangle, XCircle, HelpCircle, Edit2, Trash2, Bell, BellOff, BarChart3 } from 'lucide-react'
+import { useRouter } from 'next/navigation'
 import type { Endpoint } from '@/types'
 import { ServiceDetailDialog } from './service-detail-dialog'
 import { EditEndpointDialog } from './edit-endpoint-dialog'
@@ -17,6 +18,7 @@ interface ServiceCardProps {
 }
 
 export function ServiceCard({ endpoint, onUpdate }: ServiceCardProps) {
+  const router = useRouter()
   const [showDetail, setShowDetail] = useState(false)
   const [showEdit, setShowEdit] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
@@ -187,6 +189,16 @@ export function ServiceCard({ endpoint, onUpdate }: ServiceCardProps) {
                 title="Open in new tab"
               >
                 <ExternalLink className="h-4 w-4 text-slate-500 group-hover/btn:text-blue-600 dark:group-hover/btn:text-cyan-400 transition-colors" />
+              </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  router.push(`/dashboard/analytics/${endpoint.id}`)
+                }}
+                className="p-2 hover:bg-white/50 dark:hover:bg-slate-800/50 rounded-lg transition-all duration-200 group/btn"
+                title="View Analytics"
+              >
+                <BarChart3 className="h-4 w-4 text-slate-500 group-hover/btn:text-violet-600 dark:group-hover/btn:text-violet-400 transition-colors" />
               </button>
             </div>
           </div>
