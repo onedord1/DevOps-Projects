@@ -35,10 +35,27 @@ export function ServiceDetailDialog({ endpoint, open, onOpenChange, onUpdate, on
     enabled: open,
   })
 
+  const { data: alertPolicyData, error: alertPolicyError, isLoading: alertPolicyLoading } = useQuery({
+    queryKey: ['alert-policy', endpoint.id],
+    queryFn: async () => {
+      try {
+        const response = await apiClient.getAlertPolicy(endpoint.id)
+        return response.data
+      } catch (error) {
+        console.log('Alert policy not found for endpoint:', endpoint.id, error)
+        // Return default if not found
+        return { consecutive_failures_threshold: 3 }
+      }
+    },
+    enabled: open,
+    retry: false,
+  })
+
   if (!open) return null
 
   const history = historyData || {}
   const stats = statsData || {}
+  const alertPolicy = alertPolicyData || {}
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
@@ -188,8 +205,8 @@ export function ServiceDetailDialog({ endpoint, open, onOpenChange, onUpdate, on
                 <p className="font-semibold text-lg text-slate-900 dark:text-white">{endpoint.timeout_seconds}s</p>
               </div>
               <div className="bg-white dark:bg-slate-900 p-4 rounded-lg border border-slate-200 dark:border-slate-700">
-                <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Failure Threshold</p>
-                <p className="font-semibold text-lg text-slate-900 dark:text-white">{endpoint.failure_threshold_minutes} min</p>
+                <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Alert After</p>
+                <p className="font-semibold text-lg text-slate-900 dark:text-white">{alertPolicy.consecutive_failures_threshold || 3} failures</p>
               </div>
             </div>
           </div>

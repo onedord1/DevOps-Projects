@@ -142,6 +142,11 @@ class ApiClient {
     return data
   }
 
+  async getProjectDashboard(id: string) {
+    const { data } = await this.client.get<ApiResponse<any>>(`/projects/${id}/dashboard`)
+    return data
+  }
+
   // Endpoints
   async getEndpoints(params?: {
     page?: number
@@ -375,7 +380,57 @@ class ApiClient {
   }
 
   async deleteIncident(id: string) {
-    const { data } = await this.client.delete<ApiResponse<void>>(`/incidents/${id}`)
+    const { data} = await this.client.delete<ApiResponse<void>>(`/incidents/${id}`)
+    return data
+  }
+
+  // Alert Policies
+  async createOrUpdateAlertPolicy(endpointId: string, policy: any) {
+    const { data } = await this.client.post<ApiResponse<any>>(
+      `/endpoints/${endpointId}/alert-policy`,
+      policy
+    )
+    return data
+  }
+
+  async getAlertPolicy(endpointId: string) {
+    const { data } = await this.client.get<ApiResponse<any>>(
+      `/endpoints/${endpointId}/alert-policy`
+    )
+    return data
+  }
+
+  async deleteAlertPolicy(endpointId: string) {
+    const { data } = await this.client.delete<ApiResponse<void>>(
+      `/endpoints/${endpointId}/alert-policy`
+    )
+    return data
+  }
+
+  async getAlertPolicyPresets() {
+    const { data } = await this.client.get<ApiResponse<any[]>>('/alert-policy-presets')
+    return data
+  }
+
+  // Post-Mortem
+  async generatePostMortem(incidentId: string) {
+    const { data } = await this.client.get<ApiResponse<string>>(`/incidents/${incidentId}/post-mortem`)
+    return data
+  }
+
+  // Acknowledge Incident
+  async acknowledgeIncident(incidentId: string, assignedTo?: string) {
+    const { data } = await this.client.post<ApiResponse<Incident>>(`/incidents/${incidentId}/acknowledge`, {
+      assigned_to: assignedTo
+    })
+    return data
+  }
+
+  // Assign Incident
+  async assignIncident(incidentId: string, assignedTo: string) {
+    const { data} = await this.client.put<ApiResponse<Incident>>(`/incidents/${incidentId}`, {
+      assigned_to: assignedTo
+    })
     return data
   }
 }

@@ -12,6 +12,7 @@ use uuid::Uuid;
 use utils::RedisClient;
 
 use crate::health_checker::HealthChecker;
+use crate::alert_policy_manager::AlertPolicyManager;
 
 pub struct CheckerScheduler {
     db: PgPool,
@@ -177,9 +178,17 @@ impl CheckerScheduler {
             last_status: endpoint.status.clone(),
         });
 
+        // Load alert policy or use defaults
+        let policy = AlertPolicyManager::load_policy(endpoint.id, db)
+            .await
+            .unwrap_or_else(|| AlertPolicyManager::default_policy());
+
         if result.success {
-            // Service is healthy
-            if state.consecutive_failures > 0 {
+            // Service is healthy - reset failure counter
+            let previous_count = AlertPolicyManager::get_failure_count(endpoint.id);
+            AlertPolicyManager::reset_failure_count(endpoint.id);
+
+            if previous_count > 0 {
                 // Service recovered
                 let downtime_seconds = if let Some(first_failure) = state.first_failure_at {
                     (Utc::now() - first_failure).num_seconds()
@@ -205,7 +214,6 @@ impl CheckerScheduler {
                     self.auto_resolve_incidents_for_endpoint(db, endpoint).await.ok();
                 }
             } else if state.last_status != EndpointStatus::Up {
-                // First successful check or status is not Up (e.g., Unknown)
                 tracing::info!("Endpoint {} ({}) is now UP", endpoint.name, endpoint.id);
                 self.update_endpoint_status(
                     db,
@@ -218,36 +226,77 @@ impl CheckerScheduler {
                 state.last_status = EndpointStatus::Up;
             }
         } else {
-            // Service failed
+            // Service failed - SMART ALERTING LOGIC
+            let failure_count = AlertPolicyManager::increment_failure_count(endpoint.id);
+            
             state.consecutive_failures += 1;
             if state.first_failure_at.is_none() {
                 state.first_failure_at = Some(Utc::now());
             }
 
-            let downtime_seconds = if let Some(first_failure) = state.first_failure_at {
-                (Utc::now() - first_failure).num_seconds()
-            } else {
-                0
-            };
+            tracing::info!(
+                "Endpoint {} failed (count: {}/{})",
+                endpoint.name,
+                failure_count,
+                policy.consecutive_failures_threshold
+            );
 
-            let threshold_seconds = endpoint.failure_threshold_minutes as i64 * 60;
+            // STEP 1: Send WARNING on first failure (if enabled)
+            if policy.send_warning_on_first_failure && failure_count == 1 {
+                tracing::info!("Sending WARNING for first failure: {}", endpoint.name);
+                
+                let event = Event::Custom {
+                    event_type: "endpoint.warning".to_string(),
+                    data: serde_json::json!({
+                        "endpoint_id": endpoint.id,
+                        "endpoint_name": endpoint.name,
+                        "endpoint_url": endpoint.url,
+                        "severity": "warning",
+                        "message": format!("⚠️ WARNING: {} failed health check", endpoint.name),
+                        "failure_reason": result.failure_reason,
+                        "error_message": result.error_message,
+                    }),
+                    timestamp: Utc::now(),
+                };
+                redis.publish("notification_events", &EventMessage::new(event)).await.ok();
 
-            // Determine new status
-            let new_status = if downtime_seconds >= threshold_seconds {
-                EndpointStatus::Down
-            } else if state.consecutive_failures >= 2 {
-                EndpointStatus::PartialOutage
-            } else {
-                state.last_status.clone()
-            };
+                AlertPolicyManager::log_alert(
+                    endpoint.id,
+                    policy.id,
+                    "warning",
+                    &policy.warning_channels,
+                    &format!("First failure detected for {}", endpoint.name),
+                    db
+                ).await.ok();
+            }
 
-            // Update status if changed
-            if new_status != state.last_status {
-                self.update_endpoint_status(db, redis, endpoint, new_status.clone(), None).await?;
-                state.last_status = new_status.clone();
+            // STEP 2: Check if threshold reached for FULL ALERT
+            if failure_count >= policy.consecutive_failures_threshold {
+                // Check throttling
+                let is_throttled = AlertPolicyManager::check_throttling(endpoint.id, &policy, db)
+                    .await
+                    .unwrap_or(false);
 
-                // Trigger alert if threshold reached
-                if new_status == EndpointStatus::Down {
+                if !is_throttled {
+                    tracing::warn!(
+                        "ALERT: Endpoint {} reached failure threshold ({} failures)",
+                        endpoint.name,
+                        failure_count
+                    );
+
+                    // Update status to DOWN
+                    if state.last_status != EndpointStatus::Down {
+                        self.update_endpoint_status(db, redis, endpoint, EndpointStatus::Down, None).await?;
+                        state.last_status = EndpointStatus::Down;
+                    }
+
+                    // Send FULL ALERT
+                    let downtime_seconds = if let Some(first_failure) = state.first_failure_at {
+                        (Utc::now() - first_failure).num_seconds()
+                    } else {
+                        0
+                    };
+
                     let event = Event::EndpointDownThresholdReached {
                         endpoint_id: endpoint.id,
                         org_id: endpoint.org_id,
@@ -260,9 +309,34 @@ impl CheckerScheduler {
                     };
                     redis.publish("notification_events", &EventMessage::new(event)).await.ok();
 
+                    AlertPolicyManager::log_alert(
+                        endpoint.id,
+                        policy.id,
+                        "alert",
+                        &policy.alert_channels,
+                        &format!("Endpoint {} is DOWN after {} failures", endpoint.name, failure_count),
+                        db
+                    ).await.ok();
+
                     // Create or update incident
                     self.handle_incident_for_endpoint(db, endpoint, state.first_failure_at.unwrap(), &result).await.ok();
+
+                    // STEP 3: Schedule escalation if enabled
+                    if policy.escalation_enabled {
+                        tracing::info!(
+                            "Escalation enabled for {} - will escalate in {}s if not acknowledged",
+                            endpoint.name,
+                            policy.escalation_delay_seconds
+                        );
+                        // Note: Actual escalation scheduling would be implemented here
+                    }
+                } else {
+                    tracing::debug!("Alert throttled for endpoint {}", endpoint.name);
                 }
+            } else if failure_count >= 2 && state.last_status != EndpointStatus::PartialOutage {
+                // Intermediate status
+                self.update_endpoint_status(db, redis, endpoint, EndpointStatus::PartialOutage, None).await?;
+                state.last_status = EndpointStatus::PartialOutage;
             }
         }
 

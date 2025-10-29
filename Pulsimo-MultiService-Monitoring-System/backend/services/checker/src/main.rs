@@ -1,6 +1,7 @@
 mod config;
 mod health_checker;
 mod scheduler;
+mod alert_policy_manager;
 
 use anyhow::Result;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};

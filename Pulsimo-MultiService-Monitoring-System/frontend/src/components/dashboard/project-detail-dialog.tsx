@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { X, FolderKanban, Edit2, Trash2, Activity, CheckCircle2, AlertCircle } from 'lucide-react'
+import { X, FolderKanban, Edit2, Trash2, Activity, CheckCircle2, AlertCircle, BarChart3 } from 'lucide-react'
 import { apiClient } from '@/lib/api-client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import type { Endpoint, ProjectWithStats, ProjectPriority, ProjectStatus } from '@/types'
 import { formatDistanceToNow } from 'date-fns'
+import { ProjectDashboard } from './project-dashboard'
 
 interface ProjectDetailDialogProps {
   project: ProjectWithStats
@@ -26,6 +27,7 @@ export function ProjectDetailDialog({
   onProjectDeleted,
 }: ProjectDetailDialogProps) {
   const [isEditing, setIsEditing] = useState(false)
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'details'>('dashboard')
   const [formData, setFormData] = useState({
     name: project.name,
     description: project.description || '',
@@ -116,64 +118,100 @@ export function ProjectDetailDialog({
       : 100
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-auto">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl max-w-6xl w-full max-h-[90vh] overflow-hidden border border-slate-200 dark:border-slate-800">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
-          <div className="flex items-center gap-3">
-            <div
-              className="p-2 rounded-lg"
-              style={{ backgroundColor: `${project.color}20` }}
-            >
-              <FolderKanban className="h-5 w-5" style={{ color: project.color }} />
+        <div className="bg-gradient-to-r from-violet-600 via-purple-600 to-fuchsia-600 p-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="p-3 rounded-xl bg-white/20 backdrop-blur-sm">
+                <FolderKanban className="h-6 w-6 text-white" />
+              </div>
+              <div>
+                <h2 className="text-2xl font-bold text-white">
+                  {project.name}
+                </h2>
+                <p className="text-purple-100 font-medium">{project.slug}</p>
+              </div>
             </div>
-            <div>
-              <h2 className="text-xl font-bold text-gray-900 dark:text-white">
-                {project.name}
-              </h2>
-              <p className="text-sm text-gray-500 dark:text-gray-400">{project.slug}</p>
+            <div className="flex items-center gap-2">
+              {!isEditing && activeTab === 'details' && (
+                <>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setIsEditing(true)}
+                    className="bg-white/20 hover:bg-white/30 text-white border-0"
+                    title="Edit Project"
+                  >
+                    <Edit2 className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={handleDelete}
+                    disabled={loading}
+                    className="bg-red-500/20 hover:bg-red-500/30 text-white border-0"
+                    title="Delete Project"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </>
+              )}
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={onClose}
+                className="bg-white/20 hover:bg-white/30 text-white border-0"
+                title="Close"
+              >
+                <X className="h-4 w-4" />
+              </Button>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            {!isEditing && (
-              <>
-                <Button
-                  variant="outline"
-                  onClick={() => setIsEditing(true)}
-                  className="gap-2"
-                >
-                  <Edit2 className="h-4 w-4" />
-                  Edit
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={handleDelete}
-                  disabled={loading}
-                  className="gap-2 text-red-600 hover:text-red-700 hover:bg-red-50"
-                >
-                  <Trash2 className="h-4 w-4" />
-                  Delete
-                </Button>
-              </>
-            )}
+
+          {/* Tabs */}
+          <div className="flex gap-2 mt-4">
             <button
-              onClick={onClose}
-              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+              onClick={() => setActiveTab('dashboard')}
+              className={`px-4 py-2 rounded-lg font-semibold transition-all ${
+                activeTab === 'dashboard'
+                  ? 'bg-white text-violet-600'
+                  : 'bg-white/20 text-white hover:bg-white/30'
+              }`}
             >
-              <X className="h-5 w-5 text-gray-500" />
+              <BarChart3 className="h-4 w-4 inline mr-2" />
+              Dashboard
+            </button>
+            <button
+              onClick={() => setActiveTab('details')}
+              className={`px-4 py-2 rounded-lg font-semibold transition-all ${
+                activeTab === 'details'
+                  ? 'bg-white text-violet-600'
+                  : 'bg-white/20 text-white hover:bg-white/30'
+              }`}
+            >
+              <Activity className="h-4 w-4 inline mr-2" />
+              Details
             </button>
           </div>
         </div>
 
         {/* Content */}
-        <div className="p-6 space-y-6">
+        <div className="p-6 max-h-[calc(90vh-200px)] overflow-y-auto">
           {error && (
-            <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-              <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+            <div className="p-4 bg-red-50 dark:bg-red-900/20 border-2 border-red-200 dark:border-red-800 rounded-xl">
+              <p className="text-sm text-red-600 dark:text-red-400 font-semibold">{error}</p>
             </div>
           )}
 
-          {isEditing ? (
+          {activeTab === 'dashboard' ? (
+            <ProjectDashboard 
+              projectId={project.id} 
+              projectName={project.name}
+              projectColor={project.color}
+            />
+          ) : isEditing ? (
             <form onSubmit={handleUpdate} className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">

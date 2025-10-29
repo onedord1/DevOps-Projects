@@ -11,7 +11,12 @@ import {
   TrendingUp,
   XCircle,
   AlertTriangle,
-  Activity
+  Activity,
+  UserPlus,
+  CheckCheck,
+  FileText,
+  Download,
+  Copy
 } from 'lucide-react'
 import { apiClient } from '@/lib/api-client'
 import type { IncidentWithEndpoint, IncidentStats, IncidentSeverity, IncidentState } from '@/types'
@@ -29,6 +34,18 @@ export default function IncidentsPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
+  const [assigneeInput, setAssigneeInput] = useState('')
+  const [showAssignModal, setShowAssignModal] = useState(false)
+  const [incidentToAssign, setIncidentToAssign] = useState<string | null>(null)
+  const [postMortem, setPostMortem] = useState<string | null>(null)
+  const [showPostMortem, setShowPostMortem] = useState(false)
+  const [actionLoading, setActionLoading] = useState<string | null>(null)
+  const [toast, setToast] = useState<{show: boolean, message: string, type: 'success' | 'error'}>({show: false, message: '', type: 'success'})
+
+  const showToast = (message: string, type: 'success' | 'error') => {
+    setToast({show: true, message, type})
+    setTimeout(() => setToast({show: false, message: '', type: 'success'}), 3000)
+  }
 
   useEffect(() => {
     fetchIncidents()
@@ -63,6 +80,78 @@ export default function IncidentsPage() {
       }
     } catch (error) {
       console.error('Failed to fetch stats:', error)
+    }
+  }
+
+  const handleAcknowledge = async (incidentId: string, e?: React.MouseEvent) => {
+    e?.stopPropagation()
+    try {
+      setActionLoading(incidentId)
+      await apiClient.acknowledgeIncident(incidentId)
+      await fetchIncidents()
+      showToast('Incident acknowledged successfully!', 'success')
+    } catch (error) {
+      console.error('Failed to acknowledge:', error)
+      showToast('Failed to acknowledge incident', 'error')
+    } finally {
+      setActionLoading(null)
+    }
+  }
+
+  const handleAssign = async (incidentId: string) => {
+    if (!assigneeInput.trim()) {
+      showToast('Please enter an assignee name', 'error')
+      return
+    }
+    try {
+      setActionLoading(incidentId)
+      await apiClient.assignIncident(incidentId, assigneeInput)
+      await fetchIncidents()
+      setShowAssignModal(false)
+      setIncidentToAssign(null)
+      setAssigneeInput('')
+      showToast('Incident assigned successfully!', 'success')
+    } catch (error) {
+      console.error('Failed to assign:', error)
+      showToast('Failed to assign incident', 'error')
+    } finally {
+      setActionLoading(null)
+    }
+  }
+
+  const handleGeneratePostMortem = async (incidentId: string, e?: React.MouseEvent) => {
+    e?.stopPropagation()
+    try {
+      setActionLoading(incidentId)
+      const response = await apiClient.generatePostMortem(incidentId)
+      if (response.success && response.data) {
+        setPostMortem(response.data)
+        setShowPostMortem(true)
+      }
+    } catch (error) {
+      console.error('Failed to generate post-mortem:', error)
+      showToast('Failed to generate post-mortem', 'error')
+    } finally {
+      setActionLoading(null)
+    }
+  }
+
+  const copyPostMortem = () => {
+    if (postMortem) {
+      navigator.clipboard.writeText(postMortem)
+      showToast('Post-mortem copied to clipboard!', 'success')
+    }
+  }
+
+  const downloadPostMortem = () => {
+    if (postMortem) {
+      const blob = new Blob([postMortem], { type: 'text/markdown' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `post-mortem-${selectedIncident?.id}.md`
+      a.click()
+      URL.revokeObjectURL(url)
     }
   }
 
@@ -227,46 +316,75 @@ export default function IncidentsPage() {
                 className="bg-white dark:bg-slate-800 rounded-xl p-6 border-2 border-slate-200 dark:border-slate-700 hover:border-blue-300 dark:hover:border-blue-700 shadow-lg hover:shadow-xl transition-all cursor-pointer"
                 onClick={() => setSelectedIncident(incident)}
               >
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-2">
-                      <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border-2 ${getSeverityColor(incident.severity)}`}>
-                        {incident.severity.toUpperCase()}
-                      </span>
-                      <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold ${getStateColor(incident.state)}`}>
-                        {getStateIcon(incident.state)}
-                        {incident.state.toUpperCase()}
-                      </span>
-                      <span className="text-xs text-slate-500 dark:text-slate-400">
-                        {formatDistanceToNow(new Date(incident.created_at), { addSuffix: true })}
-                      </span>
-                    </div>
-                    
-                    <h3 className="text-lg font-bold text-slate-800 dark:text-slate-200 mb-2">
-                      {incident.title}
-                    </h3>
-                    
-                    <p className="text-sm text-slate-600 dark:text-slate-400 mb-3">
-                      {incident.description}
-                    </p>
-                    
-                    <div className="flex items-center gap-4 text-sm text-slate-500 dark:text-slate-400">
-                      <span className="flex items-center gap-1">
-                        <Activity className="h-4 w-4" />
-                        {incident.endpoint_name}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <TrendingUp className="h-4 w-4" />
-                        {incident.failure_count} failures
-                      </span>
-                      {incident.assigned_to && (
-                        <span className="flex items-center gap-1">
-                          <Eye className="h-4 w-4" />
-                          {incident.assigned_to}
-                        </span>
-                      )}
-                    </div>
+                <div className="flex items-start justify-between mb-4">
+                  <div className="flex items-center gap-3">
+                    <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border-2 ${getSeverityColor(incident.severity)}`}>
+                      {incident.severity.toUpperCase()}
+                    </span>
+                    <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold ${getStateColor(incident.state)}`}>
+                      {getStateIcon(incident.state)}
+                      {incident.state.toUpperCase()}
+                    </span>
+                    <span className="text-xs text-slate-500 dark:text-slate-400">
+                      {formatDistanceToNow(new Date(incident.created_at), { addSuffix: true })}
+                    </span>
                   </div>
+
+                  {/* Action Icons - Top Right Corner */}
+                  <div className="flex items-center gap-2">
+                    {incident.state === 'open' && (
+                      <button
+                        onClick={(e) => handleAcknowledge(incident.id, e)}
+                        disabled={actionLoading === incident.id}
+                        title="Acknowledge"
+                        className="p-2.5 bg-yellow-100 hover:bg-yellow-200 dark:bg-yellow-900/30 dark:hover:bg-yellow-900/50 text-yellow-600 dark:text-yellow-300 rounded-lg transition-all hover:scale-110 disabled:opacity-50"
+                      >
+                        <CheckCheck className="h-5 w-5" />
+                      </button>
+                    )}
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setIncidentToAssign(incident.id); setShowAssignModal(true); }}
+                      title="Assign to Team Member"
+                      className="p-2.5 bg-blue-100 hover:bg-blue-200 dark:bg-blue-900/30 dark:hover:bg-blue-900/50 text-blue-600 dark:text-blue-300 rounded-lg transition-all hover:scale-110"
+                    >
+                      <UserPlus className="h-5 w-5" />
+                    </button>
+                    {incident.state === 'resolved' && (
+                      <button
+                        onClick={(e) => handleGeneratePostMortem(incident.id, e)}
+                        disabled={actionLoading === incident.id}
+                        title="Generate Post-Mortem"
+                        className="p-2.5 bg-green-100 hover:bg-green-200 dark:bg-green-900/30 dark:hover:bg-green-900/50 text-green-600 dark:text-green-300 rounded-lg transition-all hover:scale-110 disabled:opacity-50"
+                      >
+                        <FileText className="h-5 w-5" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+                
+                <h3 className="text-lg font-bold text-slate-800 dark:text-slate-200 mb-2">
+                  {incident.title}
+                </h3>
+                
+                <p className="text-sm text-slate-600 dark:text-slate-400 mb-3">
+                  {incident.description}
+                </p>
+                
+                <div className="flex items-center gap-4 text-sm text-slate-500 dark:text-slate-400">
+                  <span className="flex items-center gap-1">
+                    <Activity className="h-4 w-4" />
+                    {incident.endpoint_name}
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <TrendingUp className="h-4 w-4" />
+                    {incident.failure_count} failures
+                  </span>
+                  {incident.assigned_to && (
+                    <span className="flex items-center gap-1">
+                      <Eye className="h-4 w-4" />
+                      {incident.assigned_to}
+                    </span>
+                  )}
                 </div>
               </div>
             ))
@@ -485,6 +603,126 @@ export default function IncidentsPage() {
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Assign Modal */}
+      {showAssignModal && incidentToAssign && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" onClick={() => setShowAssignModal(false)}>
+          <div className="bg-white dark:bg-slate-800 rounded-2xl max-w-md w-full shadow-2xl border-2 border-slate-200 dark:border-slate-700" onClick={(e) => e.stopPropagation()}>
+            <div className="p-6 border-b-2 border-slate-200 dark:border-slate-700">
+              <h3 className="text-2xl font-bold text-slate-900 dark:text-white">Assign Incident</h3>
+              <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">Assign this incident to a team member</p>
+            </div>
+            <div className="p-6">
+              <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">
+                Assignee Name or Email
+              </label>
+              <input
+                type="text"
+                value={assigneeInput}
+                onChange={(e) => setAssigneeInput(e.target.value)}
+                placeholder="e.g. john@example.com or John Doe"
+                className="w-full px-4 py-3 border-2 border-slate-200 dark:border-slate-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-slate-700"
+                onKeyPress={(e) => e.key === 'Enter' && handleAssign(incidentToAssign)}
+              />
+            </div>
+            <div className="p-6 border-t-2 border-slate-200 dark:border-slate-700 flex gap-3 justify-end">
+              <button
+                onClick={() => { setShowAssignModal(false); setIncidentToAssign(null); setAssigneeInput(''); }}
+                className="px-6 py-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 rounded-xl font-semibold text-slate-700 dark:text-slate-300 transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => handleAssign(incidentToAssign)}
+                disabled={actionLoading === incidentToAssign || !assigneeInput.trim()}
+                className="px-6 py-3 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white rounded-xl font-semibold shadow-lg transition-all disabled:opacity-50 flex items-center gap-2"
+              >
+                <UserPlus className="h-5 w-5" />
+                Assign
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Post-Mortem Modal */}
+      {showPostMortem && postMortem && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" onClick={() => setShowPostMortem(false)}>
+          <div className="bg-white dark:bg-slate-800 rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-auto shadow-2xl border-2 border-slate-200 dark:border-slate-700" onClick={(e) => e.stopPropagation()}>
+            <div className="sticky top-0 bg-gradient-to-r from-slate-50 to-slate-100 dark:from-slate-800 dark:to-slate-900 border-b-2 border-slate-200 dark:border-slate-700 p-6 z-10">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-3">
+                    <FileText className="h-7 w-7 text-green-600" />
+                    Post-Mortem Report
+                  </h3>
+                  <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">Incident analysis and resolution summary</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={copyPostMortem}
+                    className="p-2 bg-blue-100 hover:bg-blue-200 dark:bg-blue-900/30 dark:hover:bg-blue-900/50 text-blue-700 dark:text-blue-300 rounded-lg transition-all"
+                    title="Copy to Clipboard"
+                  >
+                    <Copy className="h-5 w-5" />
+                  </button>
+                  <button
+                    onClick={downloadPostMortem}
+                    className="p-2 bg-green-100 hover:bg-green-200 dark:bg-green-900/30 dark:hover:bg-green-900/50 text-green-700 dark:text-green-300 rounded-lg transition-all"
+                    title="Download as Markdown"
+                  >
+                    <Download className="h-5 w-5" />
+                  </button>
+                  <button
+                    onClick={() => setShowPostMortem(false)}
+                    className="p-2 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg transition-colors"
+                    title="Close"
+                  >
+                    <XCircle className="h-6 w-6 text-slate-500" />
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div className="p-6">
+              <pre className="whitespace-pre-wrap text-sm text-slate-800 dark:text-slate-200 bg-slate-50 dark:bg-slate-900/50 p-6 rounded-xl border-2 border-slate-200 dark:border-slate-700 font-mono leading-relaxed">
+                {postMortem}
+              </pre>
+            </div>
+            <div className="sticky bottom-0 bg-gradient-to-r from-slate-50 to-slate-100 dark:from-slate-800 dark:to-slate-900 border-t-2 border-slate-200 dark:border-slate-700 p-6">
+              <button
+                onClick={() => setShowPostMortem(false)}
+                className="w-full px-6 py-3 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white rounded-xl font-semibold shadow-lg transition-all"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Toast Notification */}
+      {toast.show && (
+        <div className="fixed bottom-8 right-8 z-50 animate-slide-up">
+          <div className={`flex items-center gap-3 px-6 py-4 rounded-xl shadow-2xl border-2 ${
+            toast.type === 'success' 
+              ? 'bg-green-50 dark:bg-green-900/90 border-green-200 dark:border-green-700' 
+              : 'bg-red-50 dark:bg-red-900/90 border-red-200 dark:border-red-700'
+          }`}>
+            {toast.type === 'success' ? (
+              <CheckCircle className="h-6 w-6 text-green-600 dark:text-green-300" />
+            ) : (
+              <AlertCircle className="h-6 w-6 text-red-600 dark:text-red-300" />
+            )}
+            <p className={`font-semibold ${
+              toast.type === 'success' 
+                ? 'text-green-800 dark:text-green-200' 
+                : 'text-red-800 dark:text-red-200'
+            }`}>
+              {toast.message}
+            </p>
           </div>
         </div>
       )}

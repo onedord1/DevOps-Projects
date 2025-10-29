@@ -7,7 +7,7 @@ use models::{
     ApiResponse, Claims, CreateProjectRequest, PaginatedResponse, PaginationParams, Project,
     ProjectWithStats, UpdateProjectRequest,
 };
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 use tracing::{error, info};
 use uuid::Uuid;
@@ -445,4 +445,264 @@ pub async fn delete_project(
             Err(StatusCode::INTERNAL_SERVER_ERROR)
         }
     }
+}
+
+// ============================================================================
+// Project Dashboard Statistics
+// ============================================================================
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ProjectDashboardStats {
+    pub health_score: f64,
+    pub total_services: i32,
+    pub service_status: ServiceStatusBreakdown,
+    pub uptime_30d: f64,
+    pub mttr_minutes: f64,
+    pub active_incidents: i32,
+    pub incidents_this_month: i32,
+    pub uptime_trend: Vec<UptimeTrendPoint>,
+    pub top_problematic_services: Vec<ProblematicService>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ServiceStatusBreakdown {
+    pub up: i32,
+    pub down: i32,
+    pub degraded: i32,
+    pub unknown: i32,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct UptimeTrendPoint {
+    pub date: String,
+    pub uptime_percentage: f64,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ProblematicService {
+    pub id: String,
+    pub name: String,
+    pub url: String,
+    pub incident_count: i32,
+    pub total_downtime_minutes: i32,
+    pub mttr_minutes: f64,
+    pub last_incident: Option<String>,
+}
+
+/// Get comprehensive dashboard statistics for a project
+pub async fn get_project_dashboard_stats(
+    State(state): State<AppState>,
+    Extension(claims): Extension<Claims>,
+    Path(project_id): Path<Uuid>,
+) -> Result<Json<ApiResponse<ProjectDashboardStats>>, StatusCode> {
+    let org_id = Uuid::parse_str(&claims.org_id).map_err(|_| StatusCode::BAD_REQUEST)?;
+    
+    info!("Fetching dashboard stats for project {} (org_id: {})", project_id, org_id);
+
+    // Verify project exists and belongs to org
+    let project_exists = sqlx::query_scalar::<_, bool>(
+        "SELECT EXISTS(SELECT 1 FROM projects WHERE id = $1 AND org_id = $2 AND is_active = TRUE)"
+    )
+    .bind(&project_id)
+    .bind(&org_id)
+    .fetch_one(&state.db)
+    .await
+    .map_err(|e| {
+        error!("Failed to verify project: {}", e);
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
+
+    if !project_exists {
+        return Err(StatusCode::NOT_FOUND);
+    }
+
+    // Get service status breakdown
+    let service_status: ServiceStatusBreakdown = sqlx::query_as::<_, (i32, i32, i32, i32)>(
+        r#"
+        SELECT 
+            COUNT(CASE WHEN status = 'UP' THEN 1 END)::int as up,
+            COUNT(CASE WHEN status = 'DOWN' THEN 1 END)::int as down,
+            COUNT(CASE WHEN status = 'PARTIAL_OUTAGE' THEN 1 END)::int as degraded,
+            COUNT(CASE WHEN status = 'UNKNOWN' THEN 1 END)::int as unknown
+        FROM endpoints
+        WHERE project_id = $1 AND is_active = TRUE
+        "#
+    )
+    .bind(&project_id)
+    .fetch_one(&state.db)
+    .await
+    .map(|(up, down, degraded, unknown)| ServiceStatusBreakdown { up, down, degraded, unknown })
+    .map_err(|e| {
+        error!("Failed to get service status: {}", e);
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
+
+    let total_services = service_status.up + service_status.down + service_status.degraded + service_status.unknown;
+
+    // Calculate health score (weighted: up=100%, degraded=50%, down/unknown=0%)
+    let health_score = if total_services > 0 {
+        ((service_status.up as f64 * 100.0) + (service_status.degraded as f64 * 50.0)) / total_services as f64
+    } else {
+        100.0
+    };
+
+    // Get 30-day uptime percentage
+    let uptime_30d: f64 = sqlx::query_scalar(
+        r#"
+        SELECT COALESCE(
+            AVG(CASE WHEN success THEN 100.0 ELSE 0.0 END), 100.0
+        )
+        FROM health_checks hc
+        JOIN endpoints e ON hc.endpoint_id = e.id
+        WHERE e.project_id = $1 
+        AND e.is_active = TRUE
+        AND hc.checked_at > NOW() - INTERVAL '30 days'
+        "#
+    )
+    .bind(&project_id)
+    .fetch_one(&state.db)
+    .await
+    .unwrap_or(100.0);
+
+    // Calculate MTTR (Mean Time To Recovery) in minutes
+    let mttr_minutes: f64 = sqlx::query_scalar(
+        r#"
+        WITH incident_durations AS (
+            SELECT EXTRACT(EPOCH FROM (i.resolved_at - i.created_at)) / 60.0 as duration_minutes
+            FROM incidents i
+            JOIN endpoints e ON i.endpoint_id = e.id
+            WHERE e.project_id = $1
+            AND i.state = 'resolved'
+            AND i.resolved_at IS NOT NULL
+            AND i.created_at > NOW() - INTERVAL '30 days'
+        )
+        SELECT COALESCE(AVG(duration_minutes), 0.0)::double precision
+        FROM incident_durations
+        "#
+    )
+    .bind(&project_id)
+    .fetch_one(&state.db)
+    .await
+    .unwrap_or_else(|e| {
+        error!("Failed to calculate MTTR: {}", e);
+        0.0
+    });
+    
+    info!("Project {} MTTR calculated: {} minutes", project_id, mttr_minutes);
+
+    // Get active incidents count
+    let active_incidents: i32 = sqlx::query_scalar(
+        r#"
+        SELECT COUNT(*)::int
+        FROM incidents i
+        JOIN endpoints e ON i.endpoint_id = e.id
+        WHERE e.project_id = $1
+        AND i.state IN ('open', 'acknowledged', 'investigating')
+        "#
+    )
+    .bind(&project_id)
+    .fetch_one(&state.db)
+    .await
+    .unwrap_or(0);
+
+    // Get incidents this month
+    let incidents_this_month: i32 = sqlx::query_scalar(
+        r#"
+        SELECT COUNT(*)::int
+        FROM incidents i
+        JOIN endpoints e ON i.endpoint_id = e.id
+        WHERE e.project_id = $1
+        AND i.created_at >= DATE_TRUNC('month', CURRENT_DATE)
+        "#
+    )
+    .bind(&project_id)
+    .fetch_one(&state.db)
+    .await
+    .unwrap_or(0);
+
+    // Get 30-day uptime trend (daily)
+    let uptime_trend: Vec<UptimeTrendPoint> = sqlx::query_as::<_, (String, f64)>(
+        r#"
+        SELECT 
+            TO_CHAR(DATE(hc.checked_at), 'YYYY-MM-DD') as date,
+            AVG(CASE WHEN hc.success THEN 100.0 ELSE 0.0 END) as uptime_percentage
+        FROM health_checks hc
+        JOIN endpoints e ON hc.endpoint_id = e.id
+        WHERE e.project_id = $1
+        AND e.is_active = TRUE
+        AND hc.checked_at > NOW() - INTERVAL '30 days'
+        GROUP BY DATE(hc.checked_at)
+        ORDER BY DATE(hc.checked_at)
+        "#
+    )
+    .bind(&project_id)
+    .fetch_all(&state.db)
+    .await
+    .unwrap_or_default()
+    .into_iter()
+    .map(|(date, uptime_percentage)| UptimeTrendPoint { date, uptime_percentage })
+    .collect();
+
+    // Get top 5 problematic services
+    let top_problematic_services: Vec<ProblematicService> = sqlx::query_as::<_, (String, String, String, i32, i32, f64, Option<String>)>(
+        r#"
+        WITH service_incidents AS (
+            SELECT 
+                e.id,
+                e.name,
+                e.url,
+                COUNT(i.id)::int as incident_count,
+                COALESCE(SUM(EXTRACT(EPOCH FROM (COALESCE(i.resolved_at, NOW()) - i.created_at)) / 60.0), 0)::int as total_downtime_minutes,
+                COALESCE(AVG(EXTRACT(EPOCH FROM (i.resolved_at - i.created_at)) / 60.0) FILTER (WHERE i.state = 'resolved'), 0.0) as mttr_minutes,
+                MAX(i.created_at) as last_incident
+            FROM endpoints e
+            LEFT JOIN incidents i ON e.id = i.endpoint_id AND i.created_at > NOW() - INTERVAL '30 days'
+            WHERE e.project_id = $1 AND e.is_active = TRUE
+            GROUP BY e.id, e.name, e.url
+            HAVING COUNT(i.id) > 0
+            ORDER BY incident_count DESC, total_downtime_minutes DESC
+            LIMIT 5
+        )
+        SELECT 
+            id::text,
+            name,
+            url,
+            incident_count,
+            total_downtime_minutes,
+            mttr_minutes,
+            TO_CHAR(last_incident, 'YYYY-MM-DD HH24:MI:SS')
+        FROM service_incidents
+        "#
+    )
+    .bind(&project_id)
+    .fetch_all(&state.db)
+    .await
+    .unwrap_or_default()
+    .into_iter()
+    .map(|(id, name, url, incident_count, total_downtime_minutes, mttr_minutes, last_incident)| {
+        ProblematicService {
+            id,
+            name,
+            url,
+            incident_count,
+            total_downtime_minutes,
+            mttr_minutes,
+            last_incident,
+        }
+    })
+    .collect();
+
+    let stats = ProjectDashboardStats {
+        health_score,
+        total_services,
+        service_status,
+        uptime_30d,
+        mttr_minutes,
+        active_incidents,
+        incidents_this_month,
+        uptime_trend,
+        top_problematic_services,
+    };
+
+    Ok(Json(ApiResponse::success(stats)))
 }

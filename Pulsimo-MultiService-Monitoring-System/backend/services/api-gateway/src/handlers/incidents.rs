@@ -414,6 +414,77 @@ pub async fn get_incident_stats(
     Ok(Json(ApiResponse::success(stats)))
 }
 
+/// Acknowledge incident
+pub async fn acknowledge_incident(
+    State(state): State<AppState>,
+    Path(id): Path<Uuid>,
+    Json(payload): Json<serde_json::Value>,
+) -> Result<impl IntoResponse, (StatusCode, Json<ApiResponse<()>>)> {
+    // Check if incident exists and is open
+    let incident: Option<(String,)> = sqlx::query_as("SELECT state FROM incidents WHERE id = $1")
+        .bind(id)
+        .fetch_optional(&state.db)
+        .await
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ApiResponse::<()>::error(format!("Database error: {}", e))),
+            )
+        })?;
+
+    if incident.is_none() {
+        return Err((
+            StatusCode::NOT_FOUND,
+            Json(ApiResponse::<()>::error("Incident not found".to_string())),
+        ));
+    }
+
+    // Update incident to acknowledged state
+    let assigned_to = payload.get("assigned_to").and_then(|v| v.as_str());
+    
+    let query = if let Some(assignee) = assigned_to {
+        sqlx::query(
+            "UPDATE incidents 
+             SET state = 'acknowledged', 
+                 acknowledged_at = NOW(),
+                 assigned_to = $2,
+                 updated_at = NOW()
+             WHERE id = $1"
+        )
+        .bind(id)
+        .bind(assignee)
+    } else {
+        sqlx::query(
+            "UPDATE incidents 
+             SET state = 'acknowledged', 
+                 acknowledged_at = NOW(),
+                 updated_at = NOW()
+             WHERE id = $1"
+        )
+        .bind(id)
+    };
+
+    query.execute(&state.db).await.map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ApiResponse::<()>::error(format!("Database error: {}", e))),
+        )
+    })?;
+
+    // Record state history
+    sqlx::query(
+        "INSERT INTO incident_state_history (incident_id, from_state, to_state, changed_by, notes)
+         VALUES ($1, $2, 'acknowledged', 'system', 'Incident acknowledged')"
+    )
+    .bind(id)
+    .bind(incident.unwrap().0)
+    .execute(&state.db)
+    .await
+    .ok();
+
+    Ok(Json(ApiResponse::success(())))
+}
+
 /// Delete incident (admin only)
 pub async fn delete_incident(
     State(state): State<AppState>,

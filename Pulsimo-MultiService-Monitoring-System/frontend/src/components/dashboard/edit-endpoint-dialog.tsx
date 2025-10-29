@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { X, Loader2, Activity, Lock, Info } from 'lucide-react'
+import { X, Loader2, Activity, Lock, Info, AlertTriangle, Bell, Clock, ChevronRight, Zap, Shield } from 'lucide-react'
 import { apiClient } from '@/lib/api-client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -23,10 +23,16 @@ export function EditEndpointDialog({ endpoint, open, onOpenChange, onSuccess }: 
     description: endpoint.description || '',
     tags: endpoint.tags ? endpoint.tags.join(', ') : '',
     owner_contact: endpoint.owner_contact || '',
-    check_interval_seconds: endpoint.check_interval_seconds || 60,
+    check_interval_seconds: endpoint.check_interval_seconds || 30,
     timeout_seconds: endpoint.timeout_seconds || 10,
     expected_status_code: endpoint.expected_status_code || 200,
-    failure_threshold_minutes: endpoint.failure_threshold_minutes || 3,
+    // Alert Policy (count-based, not time-based)
+    severity: 'medium' as 'critical' | 'high' | 'medium' | 'low',
+    consecutive_failures_threshold: 3,
+    send_warning_on_first_failure: false,
+    escalation_enabled: false,
+    escalation_delay_seconds: 900,
+    response_time_threshold_ms: null as number | null,
     retry_count: endpoint.retry_count || 2,
     retry_delay_seconds: endpoint.retry_delay_seconds || 5,
     auth_header: endpoint.auth_header || '',
@@ -37,6 +43,7 @@ export function EditEndpointDialog({ endpoint, open, onOpenChange, onSuccess }: 
     project_id: endpoint.project_id || '',
   })
   const [projects, setProjects] = useState<any[]>([])
+  const [showAdvanced, setShowAdvanced] = useState(false)
   const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(false)
 
@@ -65,10 +72,16 @@ export function EditEndpointDialog({ endpoint, open, onOpenChange, onSuccess }: 
         description: endpoint.description || '',
         tags: endpoint.tags ? endpoint.tags.join(', ') : '',
         owner_contact: endpoint.owner_contact || '',
-        check_interval_seconds: endpoint.check_interval_seconds || 60,
+        check_interval_seconds: endpoint.check_interval_seconds || 30,
         timeout_seconds: endpoint.timeout_seconds || 10,
         expected_status_code: endpoint.expected_status_code || 200,
-        failure_threshold_minutes: endpoint.failure_threshold_minutes || 3,
+        // Alert Policy fields (will be loaded from API later)
+        severity: 'medium',
+        consecutive_failures_threshold: 3,
+        send_warning_on_first_failure: false,
+        escalation_enabled: false,
+        escalation_delay_seconds: 900,
+        response_time_threshold_ms: null,
         retry_count: endpoint.retry_count || 2,
         retry_delay_seconds: endpoint.retry_delay_seconds || 5,
         auth_header: endpoint.auth_header || '',
@@ -157,15 +170,17 @@ export function EditEndpointDialog({ endpoint, open, onOpenChange, onSuccess }: 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Name */}
             <div className="space-y-2">
-              <Label htmlFor="edit-name">
-                Service Name <span className="text-red-500">*</span>
-              </Label>
-              <Input
+              <label htmlFor="edit-name" className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+                Service Name *
+              </label>
+              <input
                 id="edit-name"
+                type="text"
+                required
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                className="w-full px-4 py-3 border-2 border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-slate-800 transition-all"
                 placeholder="My API Service"
-                required
               />
             </div>
 
@@ -262,20 +277,25 @@ export function EditEndpointDialog({ endpoint, open, onOpenChange, onSuccess }: 
             </div>
 
             <div className="space-y-2">
-              <label htmlFor="edit-failure-threshold" className="text-sm font-semibold text-slate-700 dark:text-slate-300">
-                Failure Threshold (min)
+              <label htmlFor="edit-consecutive-failures" className="text-sm font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-2">
+                <AlertTriangle className="h-4 w-4" />
+                Alert After (failures)
               </label>
               <input
-                id="edit-failure-threshold"
+                id="edit-consecutive-failures"
                 type="number"
                 min="1"
                 max="10"
-                value={formData.failure_threshold_minutes}
-                onChange={(e) => setFormData({ ...formData, failure_threshold_minutes: parseInt(e.target.value) })}
+                value={formData.consecutive_failures_threshold}
+                onChange={(e) => setFormData({ ...formData, consecutive_failures_threshold: parseInt(e.target.value) })}
                 className="w-full px-4 py-3 border-2 border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-slate-800 transition-all"
               />
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Alert after this many consecutive failures
+              </p>
             </div>
           </div>
+
 
           {/* Conditional Auth Header for HTTP services */}
           {requiresAuthHeader && (

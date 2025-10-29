@@ -1,11 +1,9 @@
 'use client'
 
 import { useState } from 'react'
-import { X, FolderKanban } from 'lucide-react'
+import { X, FolderKanban, Sparkles, Flag, Mail, Tag, Palette, Zap } from 'lucide-react'
 import { apiClient } from '@/lib/api-client'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import type { ProjectPriority } from '@/types'
 
 interface AddProjectDialogProps {
@@ -102,172 +100,228 @@ export function AddProjectDialog({ open, onClose, onProjectCreated }: AddProject
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-auto">
-        {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/20">
-              <FolderKanban className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden border border-slate-200 dark:border-slate-800 transform animate-in zoom-in-95 duration-300">
+        {/* Modern Gradient Header */}
+        <div className="bg-gradient-to-r from-violet-600 via-purple-600 to-fuchsia-600 p-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="bg-white/20 backdrop-blur-sm p-3 rounded-xl">
+                <FolderKanban className="h-6 w-6 text-white" />
+              </div>
+              <div>
+                <h2 className="text-2xl font-bold text-white flex items-center gap-2">
+                  Create New Project
+                  <Sparkles className="h-5 w-5 text-yellow-300 animate-pulse" />
+                </h2>
+                <p className="text-purple-100 text-sm font-medium">
+                  Organize your service endpoints by project
+                </p>
+              </div>
             </div>
-            <div>
-              <h2 className="text-xl font-bold text-gray-900 dark:text-white">Create New Project</h2>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                Organize your service endpoints by project
-              </p>
-            </div>
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={handleClose}
+              className="bg-white/20 hover:bg-white/30 text-white border-0"
+            >
+              <X className="h-4 w-4" />
+            </Button>
           </div>
-          <button
-            onClick={handleClose}
-            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-          >
-            <X className="h-5 w-5 text-gray-500" />
-          </button>
         </div>
 
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
-          {error && (
-            <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-              <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
-            </div>
-          )}
+        {/* Form with scroll */}
+        <div className="overflow-y-auto max-h-[calc(90vh-120px)]">
+          <form onSubmit={handleSubmit} className="p-6 space-y-5">
+            {error && (
+              <div className="bg-red-50 dark:bg-red-900/20 border-2 border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 p-4 rounded-xl flex items-start gap-3">
+                <Zap className="h-5 w-5 flex-shrink-0 mt-0.5" />
+                <p className="text-sm font-medium">{error}</p>
+              </div>
+            )}
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Project Name */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Project Name */}
+              <div className="space-y-2">
+                <label htmlFor="name" className="text-sm font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-2">
+                  <FolderKanban className="h-4 w-4 text-violet-600" />
+                  Project Name *
+                </label>
+                <input
+                  id="name"
+                  type="text"
+                  required
+                  value={formData.name}
+                  onChange={(e) => handleNameChange(e.target.value)}
+                  className="w-full px-4 py-3 border-2 border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent bg-white dark:bg-slate-800 transition-all"
+                  placeholder="E-commerce Platform"
+                />
+              </div>
+
+              {/* Slug */}
+              <div className="space-y-2">
+                <label htmlFor="slug" className="text-sm font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-2">
+                  <Tag className="h-4 w-4 text-violet-600" />
+                  Slug *
+                </label>
+                <input
+                  id="slug"
+                  type="text"
+                  required
+                  value={formData.slug}
+                  onChange={(e) => setFormData({ ...formData, slug: e.target.value })}
+                  pattern="[a-z0-9\-]+"
+                  className="w-full px-4 py-3 border-2 border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent bg-white dark:bg-slate-800 transition-all font-mono text-sm"
+                  placeholder="e-commerce-platform"
+                />
+                <p className="text-xs text-slate-500 dark:text-slate-400 italic">
+                  Lowercase letters, numbers, and hyphens only
+                </p>
+              </div>
+            </div>
+
+            {/* Description */}
             <div className="space-y-2">
-              <Label htmlFor="name">
-                Project Name <span className="text-red-500">*</span>
-              </Label>
-              <Input
-                id="name"
-                value={formData.name}
-                onChange={(e) => handleNameChange(e.target.value)}
-                placeholder="E-commerce Platform"
-                required
+              <label htmlFor="description" className="text-sm font-semibold text-slate-700 dark:text-slate-300">Description</label>
+              <textarea
+                id="description"
+                value={formData.description}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                placeholder="Brief description of the project..."
+                rows={3}
+                className="w-full px-4 py-3 border-2 border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent bg-white dark:bg-slate-800 transition-all resize-none"
               />
             </div>
 
-            {/* Slug */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Priority */}
+              <div className="space-y-2">
+                <label htmlFor="priority" className="text-sm font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-2">
+                  <Flag className="h-4 w-4 text-violet-600" />
+                  Priority
+                </label>
+                <select
+                  id="priority"
+                  value={formData.priority}
+                  onChange={(e) =>
+                    setFormData({ ...formData, priority: e.target.value as ProjectPriority })
+                  }
+                  className="w-full px-4 py-3 border-2 border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent bg-white dark:bg-slate-800 transition-all font-semibold"
+                >
+                  <option value="low">🟢 Low Priority</option>
+                  <option value="medium">🔵 Medium Priority</option>
+                  <option value="high">🟡 High Priority</option>
+                  <option value="critical">🔴 Critical Priority</option>
+                </select>
+              </div>
+
+              {/* Color */}
+              <div className="space-y-2">
+                <label htmlFor="color" className="text-sm font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-2">
+                  <Palette className="h-4 w-4 text-violet-600" />
+                  Project Color
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="color"
+                    id="color"
+                    value={formData.color}
+                    onChange={(e) => setFormData({ ...formData, color: e.target.value })}
+                    className="h-12 w-16 border-2 border-slate-200 dark:border-slate-700 rounded-xl cursor-pointer"
+                  />
+                  <input
+                    type="text"
+                    value={formData.color}
+                    onChange={(e) => setFormData({ ...formData, color: e.target.value })}
+                    placeholder="#3b82f6"
+                    pattern="^#[0-9A-Fa-f]{6}$"
+                    className="flex-1 px-4 py-3 border-2 border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent bg-white dark:bg-slate-800 transition-all font-mono text-sm"
+                  />
+                </div>
+                <div className="flex gap-2 mt-2">
+                  {Object.entries(priorityColors).map(([key, color]) => (
+                    <button
+                      key={key}
+                      type="button"
+                      onClick={() => setFormData({ ...formData, color })}
+                      className={`w-10 h-10 rounded-xl border-2 hover:scale-110 transition-all shadow-md ${
+                        formData.color === color 
+                          ? 'border-violet-500 ring-2 ring-violet-300' 
+                          : 'border-slate-200 dark:border-slate-700'
+                      }`}
+                      style={{ backgroundColor: color }}
+                      title={key.charAt(0).toUpperCase() + key.slice(1)}
+                    />
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Tags */}
             <div className="space-y-2">
-              <Label htmlFor="slug">
-                Slug <span className="text-red-500">*</span>
-              </Label>
-              <Input
-                id="slug"
-                value={formData.slug}
-                onChange={(e) => setFormData({ ...formData, slug: e.target.value })}
-                placeholder="e-commerce-platform"
-                required
-                pattern="[a-z0-9\-]+"
+              <label htmlFor="tags" className="text-sm font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-2">
+                <Tag className="h-4 w-4 text-violet-600" />
+                Tags
+              </label>
+              <input
+                id="tags"
+                type="text"
+                value={formData.tags}
+                onChange={(e) => setFormData({ ...formData, tags: e.target.value })}
+                placeholder="production, critical, backend (comma-separated)"
+                className="w-full px-4 py-3 border-2 border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent bg-white dark:bg-slate-800 transition-all"
               />
-              <p className="text-xs text-gray-500 dark:text-gray-400">
-                Lowercase letters, numbers, and hyphens only
+              <p className="text-xs text-slate-500 dark:text-slate-400 italic">
+                Separate multiple tags with commas
               </p>
             </div>
-          </div>
 
-          {/* Description */}
-          <div className="space-y-2">
-            <Label htmlFor="description">Description</Label>
-            <textarea
-              id="description"
-              value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              placeholder="Brief description of the project..."
-              rows={3}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Priority */}
+            {/* Owner Email */}
             <div className="space-y-2">
-              <Label htmlFor="priority">Priority</Label>
-              <select
-                id="priority"
-                value={formData.priority}
-                onChange={(e) =>
-                  setFormData({ ...formData, priority: e.target.value as ProjectPriority })
-                }
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              <label htmlFor="owner_email" className="text-sm font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-2">
+                <Mail className="h-4 w-4 text-violet-600" />
+                Owner Email
+              </label>
+              <input
+                id="owner_email"
+                type="email"
+                value={formData.owner_email}
+                onChange={(e) => setFormData({ ...formData, owner_email: e.target.value })}
+                placeholder="owner@example.com"
+                className="w-full px-4 py-3 border-2 border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent bg-white dark:bg-slate-800 transition-all"
+              />
+            </div>
+
+            {/* Actions */}
+            <div className="flex justify-end gap-3 pt-6 mt-6 border-t-2 border-slate-200 dark:border-slate-700">
+              <button
+                type="button"
+                onClick={handleClose}
+                disabled={loading}
+                className="px-6 py-3 border-2 border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-all font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <option value="low">Low</option>
-                <option value="medium">Medium</option>
-                <option value="high">High</option>
-                <option value="critical">Critical</option>
-              </select>
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={loading}
+                className="px-6 py-3 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 text-white rounded-xl transition-all font-semibold shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              >
+                {loading ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
+                    Creating...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="h-4 w-4" />
+                    Create Project
+                  </>
+                )}
+              </button>
             </div>
-
-            {/* Color */}
-            <div className="space-y-2">
-              <Label htmlFor="color">Project Color</Label>
-              <div className="flex gap-2">
-                <input
-                  type="color"
-                  id="color"
-                  value={formData.color}
-                  onChange={(e) => setFormData({ ...formData, color: e.target.value })}
-                  className="h-10 w-16 border border-gray-300 dark:border-gray-600 rounded-md cursor-pointer"
-                />
-                <Input
-                  value={formData.color}
-                  onChange={(e) => setFormData({ ...formData, color: e.target.value })}
-                  placeholder="#3b82f6"
-                  pattern="^#[0-9A-Fa-f]{6}$"
-                />
-              </div>
-              <div className="flex gap-2 mt-2">
-                {Object.entries(priorityColors).map(([key, color]) => (
-                  <button
-                    key={key}
-                    type="button"
-                    onClick={() => setFormData({ ...formData, color })}
-                    className="w-8 h-8 rounded-full border-2 border-gray-300 dark:border-gray-600 hover:scale-110 transition-transform"
-                    style={{ backgroundColor: color }}
-                    title={key}
-                  />
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {/* Tags */}
-          <div className="space-y-2">
-            <Label htmlFor="tags">Tags</Label>
-            <Input
-              id="tags"
-              value={formData.tags}
-              onChange={(e) => setFormData({ ...formData, tags: e.target.value })}
-              placeholder="production, critical, backend (comma-separated)"
-            />
-            <p className="text-xs text-gray-500 dark:text-gray-400">
-              Separate multiple tags with commas
-            </p>
-          </div>
-
-          {/* Owner Email */}
-          <div className="space-y-2">
-            <Label htmlFor="owner_email">Owner Email</Label>
-            <Input
-              id="owner_email"
-              type="email"
-              value={formData.owner_email}
-              onChange={(e) => setFormData({ ...formData, owner_email: e.target.value })}
-              placeholder="owner@example.com"
-            />
-          </div>
-
-          {/* Actions */}
-          <div className="flex justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
-            <Button type="button" variant="outline" onClick={handleClose} disabled={loading}>
-              Cancel
-            </Button>
-            <Button type="submit" disabled={loading}>
-              {loading ? 'Creating...' : 'Create Project'}
-            </Button>
-          </div>
-        </form>
+          </form>
+        </div>
       </div>
     </div>
   )

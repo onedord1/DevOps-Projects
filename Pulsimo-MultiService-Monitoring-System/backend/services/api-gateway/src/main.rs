@@ -60,6 +60,7 @@ async fn main() -> Result<()> {
         .route("/api/v1/projects/:id", get(handlers::projects::get_project))
         .route("/api/v1/projects/:id", put(handlers::projects::update_project))
         .route("/api/v1/projects/:id", delete(handlers::projects::delete_project))
+        .route("/api/v1/projects/:id/dashboard", get(handlers::projects::get_project_dashboard_stats))
         
         .route("/api/v1/endpoints", get(handlers::endpoints::list_endpoints))
         .route("/api/v1/endpoints", post(handlers::endpoints::create_endpoint))
@@ -104,12 +105,20 @@ async fn main() -> Result<()> {
         .route("/api/v1/incidents/:id", delete(handlers::incidents::delete_incident))
         .route("/api/v1/incidents/:id/state", put(handlers::incidents::change_incident_state))
         .route("/api/v1/incidents/:id/history", get(handlers::incidents::get_incident_history))
+        .route("/api/v1/incidents/:id/acknowledge", post(handlers::incidents::acknowledge_incident))
+        .route("/api/v1/incidents/:id/post-mortem", get(handlers::post_mortem::generate_post_mortem))
         
         // Analytics
         .route("/api/v1/analytics/uptime/:endpoint_id", get(handlers::analytics::get_uptime_metrics))
         .route("/api/v1/analytics/response-times/:endpoint_id", get(handlers::analytics::get_response_time_data))
         .route("/api/v1/analytics/downtime/:endpoint_id", get(handlers::analytics::get_downtime_periods))
         .route("/api/v1/analytics/timeline/:endpoint_id", get(handlers::analytics::get_timeline))
+        
+        // Alert Policies
+        .route("/api/v1/endpoints/:endpoint_id/alert-policy", post(handlers::alert_policies::create_or_update_alert_policy))
+        .route("/api/v1/endpoints/:endpoint_id/alert-policy", get(handlers::alert_policies::get_alert_policy))
+        .route("/api/v1/endpoints/:endpoint_id/alert-policy", delete(handlers::alert_policies::delete_alert_policy))
+        .route("/api/v1/alert-policy-presets", get(handlers::alert_policies::get_alert_policy_presets))
         
         .layer(axum_middleware::from_fn_with_state(
             state.clone(),

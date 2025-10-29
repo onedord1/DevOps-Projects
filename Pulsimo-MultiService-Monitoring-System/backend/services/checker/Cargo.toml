@@ -20,6 +20,8 @@ dotenv = { workspace = true }
 uuid = { workspace = true }
 chrono = { workspace = true }
 futures = { workspace = true }
+dashmap = "6.0"
+once_cell = "1.19"
 
 models = { path = "../../shared/models" }
 database = { path = "../../shared/database" }

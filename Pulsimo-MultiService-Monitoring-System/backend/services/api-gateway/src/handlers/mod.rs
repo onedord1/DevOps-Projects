@@ -9,6 +9,8 @@ pub mod api_keys;
 pub mod projects;
 pub mod incidents;
 pub mod analytics;
+pub mod alert_policies;
+pub mod post_mortem;
 
 use axum::{
     http::StatusCode,
