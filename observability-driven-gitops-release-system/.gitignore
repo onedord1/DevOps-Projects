@@ -1,0 +1,56 @@
+# ---- secrets & local env ----------------------------------------------------
+*.env
+.env
+.env.*
+!*.env.example
+*.pem
+*.key
+*.crt
+cosign.key
+cosign.pub
+kubeconfig
+*.kubeconfig
+
+# ---- Terraform --------------------------------------------------------------
+.terraform/
+.terraform.lock.hcl
+*.tfstate
+*.tfstate.*
+*.tfvars
+!*.tfvars.example
+crash.log
+override.tf
+override.tf.json
+
+# ---- Kubernetes / Helm ------------------------------------------------------
+charts/**/charts/
+*.tgz
+
+# ---- build & artifacts ------------------------------------------------------
+dist/
+build/
+bin/
+out/
+*.log
+sbom-*.json
+sbom-*.spdx.json
+trivy-*.json
+
+# ---- node / frontend --------------------------------------------------------
+node_modules/
+.npm/
+.pnpm-store/
+
+# ---- python -----------------------------------------------------------------
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# ---- editors & OS -----------------------------------------------------------
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*~

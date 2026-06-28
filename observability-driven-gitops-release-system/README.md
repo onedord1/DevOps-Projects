@@ -1,0 +1,129 @@
+<div align="center">
+
+# Progressive Delivery Platform
+
+### An Observability-Driven GitOps Release System for Kubernetes
+
+*Deployments that promote or roll themselves back based on real production telemetry — not hope.*
+
+[![Platform](https://img.shields.io/badge/platform-Kubernetes-326CE5?logo=kubernetes&logoColor=white)](https://kubernetes.io)
+[![GitOps](https://img.shields.io/badge/GitOps-Argo%20CD-EF7B4D?logo=argo&logoColor=white)](https://argoproj.github.io/cd)
+[![Progressive Delivery](https://img.shields.io/badge/delivery-Argo%20Rollouts-EF7B4D?logo=argo&logoColor=white)](https://argoproj.github.io/rollouts)
+[![Observability](https://img.shields.io/badge/observability-Prometheus%20%7C%20Grafana%20%7C%20Loki-E6522C?logo=prometheus&logoColor=white)](https://prometheus.io)
+[![Security](https://img.shields.io/badge/DevSecOps-Trivy%20%7C%20Cosign%20%7C%20Syft-1904DA)](https://github.com/aquasecurity/trivy)
+[![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](./LICENSE)
+
+</div>
+
+---
+
+## What this is
+
+This repository is a **production-grade platform engineering reference implementation**. It models how an internal Platform Engineering / SRE team at a large enterprise builds an **autonomous deployment platform** that decides — using live production signals — whether a release should be promoted or automatically rolled back.
+
+It is intentionally **not** a "CI/CD tutorial". The center of gravity is **reliability**: the platform treats every deployment as a hypothesis to be validated against Service Level Objectives (SLOs) and an error budget, and it acts on the result without a human in the loop.
+
+> **Business context:** the fictional company **Acme Commerce** runs a global Kubernetes e-commerce platform (`frontend`, `payment`, `order`, `inventory`, `notification`) shipping dozens of releases per day. Traditional CI/CD auto-promoted releases without validating production health, causing repeated incidents. This platform is the Platform/SRE team's answer.
+
+## The deployment lifecycle in one picture
+
+```mermaid
+flowchart LR
+    dev["Developer<br/>git push"] --> ci["GitLab CI"]
+    ci --> sec["DevSecOps Gate<br/>Trivy · Syft · Cosign"]
+    sec --> reg["Container Registry<br/>signed image + SBOM"]
+    reg --> gitops["GitOps Repo<br/>desired state"]
+    gitops --> argocd["Argo CD<br/>sync"]
+    argocd --> rollouts["Argo Rollouts<br/>canary 5→20→50→100%"]
+    rollouts --> analysis["Prometheus Analysis<br/>AnalysisTemplates"]
+    analysis --> slo{"SLOs met?"}
+    slo -- "yes" --> promote["Automatic<br/>Promotion"]
+    slo -- "no" --> rollback["Automatic<br/>Rollback"]
+    rollback --> incident["Incident Created<br/>+ Dashboard Annotation"]
+    promote --> report["Deployment Report"]
+    incident --> report
+
+    classDef good fill:#1f6f43,stroke:#0c3,color:#fff;
+    classDef bad fill:#7a1f1f,stroke:#c33,color:#fff;
+    class promote good;
+    class rollback,incident bad;
+```
+
+## Core capabilities
+
+| Capability | How it is delivered |
+|---|---|
+| **GitOps** | Git is the single source of truth; Argo CD reconciles desired state continuously. |
+| **Progressive delivery** | Argo Rollouts canary steps: **5% → 20% → 50% → 100%** with automated analysis between steps. |
+| **Observability-driven decisions** | Prometheus `AnalysisTemplates` evaluate SLOs at each step and gate promotion. |
+| **Automatic rollback** | Any failing SLO aborts the rollout and restores the last-known-good version. |
+| **DevSecOps supply chain** | Trivy scanning, Syft SBOM generation, Cosign image signing — enforced in CI. |
+| **Full telemetry** | Prometheus (metrics), Loki (logs), OpenTelemetry (traces), Grafana (dashboards), Alertmanager (routing). |
+| **Infrastructure as Code** | Terraform modules for cloud topology; Kind for local development. |
+| **Operational excellence** | ADRs, runbooks, troubleshooting guides, fault-injection scenarios, demo scripts, Makefile workflow. |
+
+## Reusable AnalysisTemplates (SLO checks)
+
+The platform ships reusable, parameterized analysis templates used by any service:
+
+- HTTP success rate
+- HTTP 5xx error rate
+- P95 latency
+- Container restart count
+- CPU utilization
+- Memory utilization
+- Payment success rate (business SLO)
+- Checkout success rate (business SLO)
+
+## Technology stack
+
+`GitLab CI` · `Kubernetes` · `Helm` / `Kustomize` · `Argo CD` · `Argo Rollouts` · `Prometheus` · `Grafana` · `Loki` · `OpenTelemetry` · `Alertmanager` · `Trivy` · `Cosign` · `Syft` · `Terraform` · `Docker` · `Kind`
+
+## Repository layout
+
+> The repository is built **incrementally, one phase at a time**. Directories appear as their phase is implemented. See **[docs/PHASES.md](./docs/PHASES.md)** for the full roadmap and current status.
+
+```text
+observability-driven-gitops-release-system/
+├── README.md                 # you are here
+├── Makefile                  # single entrypoint for every workflow
+├── docs/                     # architecture, ADRs, runbooks, SLO design
+│   ├── PHASES.md             # delivery roadmap + status
+│   ├── architecture/         # system + lifecycle diagrams (Mermaid)
+│   └── adr/                  # Architecture Decision Records
+├── scripts/                  # reusable shell automation
+├── apps/                     # (phase 3) Acme microservices + Dockerfiles
+├── clusters/                 # (phase 2) Kind / cluster bootstrap
+├── infra/                    # (phase 4) Terraform modules
+├── observability/            # (phase 5) Prometheus, Grafana, Loki, OTel, Alertmanager
+├── gitops/                   # (phase 6) Argo CD apps + desired state
+├── rollouts/                 # (phase 7) Argo Rollouts + AnalysisTemplates
+├── ci/                       # (phase 8) GitLab CI + DevSecOps
+└── demos/                    # (phase 10) demo + fault-injection scenarios
+```
+
+## Quick start
+
+```bash
+# show every available workflow target with descriptions
+make help
+
+# verify your local toolchain (kubectl, kind, helm, docker, ...)
+make check-tools
+```
+
+Full environment bring-up (`make up`) becomes available in **Phase 2**.
+
+## Documentation index
+
+- **[Phased delivery roadmap](./docs/PHASES.md)**
+- **[Architecture overview](./docs/architecture/overview.md)**
+- **[Architecture Decision Records](./docs/adr/README.md)**
+
+## Project status
+
+🟢 **Phase 1 — Foundation & Scaffolding: complete.** See [docs/PHASES.md](./docs/PHASES.md) for what's next.
+
+## License
+
+Licensed under the Apache License 2.0. See [LICENSE](./LICENSE).
