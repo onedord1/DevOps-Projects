@@ -136,8 +136,12 @@ observability-down: ## obs: remove the observability stack (CRDs left intact)
 	@bash "$(REPO_ROOT)/observability/uninstall.sh"
 
 .PHONY: gitops
-gitops: ## gitops: install Argo CD + app-of-apps (phase 6)
-	@$(call coming_soon,6,GitOps with Argo CD)
+gitops: ## gitops: install Argo CD + bootstrap the app-of-apps
+	@bash "$(REPO_ROOT)/gitops/install.sh"
+
+.PHONY: gitops-down
+gitops-down: ## gitops: remove Argo CD and all GitOps-managed apps
+	@bash "$(REPO_ROOT)/gitops/uninstall.sh"
 
 .PHONY: rollouts
 rollouts: ## delivery: install Argo Rollouts + AnalysisTemplates (phase 7)

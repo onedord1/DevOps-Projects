@@ -1,0 +1,21 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Acme application base — the five services + shared platform (auth secret, NATS).
+# Overlays set the namespace, image registry/tags, and any per-env tuning.
+
+resources:
+- platform.yaml
+- frontend.yaml
+- payment.yaml
+- order.yaml
+- inventory.yaml
+- notification.yaml
+
+# Common labels on every resource's metadata. includeSelectors=false keeps Pod
+# selectors stable (so the part-of label can change without breaking matches),
+# while still tagging Services for the Phase 5 ServiceMonitor.
+labels:
+- pairs:
+    app.kubernetes.io/part-of: acme-platform
+  includeSelectors: false

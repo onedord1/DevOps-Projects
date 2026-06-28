@@ -1,0 +1,21 @@
+# AppProject: acme — owns the application workloads in the `acme` namespace.
+# Scoped tightly: only the acme namespace, only namespaced resources, only our
+# GitOps repo as a source. Re-point forks with gitops/set-repo.sh.
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: acme
+  namespace: argocd
+  finalizers:
+  - resources-finalizer.argocd.argoproj.io
+spec:
+  description: Acme Commerce application workloads
+  sourceRepos:
+  - "https://github.com/onedord1/DevOps-Projects.git"
+  destinations:
+  - server: https://kubernetes.default.svc
+    namespace: acme
+  clusterResourceWhitelist: [] # no cluster-scoped resources for app workloads
+  namespaceResourceWhitelist:
+  - group: "*"
+    kind: "*"

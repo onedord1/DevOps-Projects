@@ -1,0 +1,34 @@
+# AppProject: platform — owns cluster infrastructure (observability, gateway,
+# rollouts). Broad permissions (cluster-scoped resources) because it installs
+# installs CRDs and operators. repoURL points at this repo; re-point forks
+# with gitops/set-repo.sh.
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: platform
+  namespace: argocd
+  finalizers:
+  - resources-finalizer.argocd.argoproj.io
+spec:
+  description: Platform infrastructure (observability, gateway, delivery)
+  sourceRepos:
+  - "https://github.com/onedord1/DevOps-Projects.git"
+  - "https://prometheus-community.github.io/helm-charts"
+  - "https://grafana.github.io/helm-charts"
+  - "https://open-telemetry.github.io/opentelemetry-helm-charts"
+  destinations:
+  - server: https://kubernetes.default.svc
+    namespace: monitoring
+  - server: https://kubernetes.default.svc
+    namespace: argocd
+  - server: https://kubernetes.default.svc
+    namespace: argo-rollouts
+  - server: https://kubernetes.default.svc
+    namespace: envoy-gateway-system
+  # Platform manages CRDs and other cluster-scoped resources.
+  clusterResourceWhitelist:
+  - group: "*"
+    kind: "*"
+  namespaceResourceWhitelist:
+  - group: "*"
+    kind: "*"

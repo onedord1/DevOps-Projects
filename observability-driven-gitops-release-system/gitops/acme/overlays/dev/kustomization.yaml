@@ -1,0 +1,27 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: acme
+
+resources:
+- ../../base
+
+# Point every service image at the local registry (Phase 2). Bump newTag to a
+# git SHA / version to roll out a new release. In Phase 7 this is what Argo
+# Rollouts canaries; in Phase 8 CI bumps these tags via a GitOps commit.
+images:
+- name: acme/frontend
+  newName: localhost:5000/acme/frontend
+  newTag: dev
+- name: acme/payment
+  newName: localhost:5000/acme/payment
+  newTag: dev
+- name: acme/order
+  newName: localhost:5000/acme/order
+  newTag: dev
+- name: acme/inventory
+  newName: localhost:5000/acme/inventory
+  newTag: dev
+- name: acme/notification
+  newName: localhost:5000/acme/notification
+  newTag: dev

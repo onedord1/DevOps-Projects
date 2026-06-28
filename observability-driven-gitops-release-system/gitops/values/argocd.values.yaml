@@ -1,0 +1,57 @@
+# Argo CD Helm values — local k3s profile.
+#
+# Kept lean: single-replica (no HA Redis), Dex/SSO and notifications disabled,
+# ApplicationSet enabled for future scaling. Server runs in insecure mode so it
+# is reachable via a simple port-forward without TLS plumbing (do NOT do this in
+# production — front it with the Gateway + TLS instead).
+
+global:
+  domain: argocd.acme.localhost
+
+configs:
+  params:
+    # Serve plaintext HTTP on the server (port-forward friendly, local only).
+    server.insecure: true
+
+  cm:
+    # Allow the app-of-apps to manage Applications in the argocd namespace.
+    application.instanceLabelKey: argocd.argoproj.io/instance
+    # Treat these as the GitOps timeouts / reconcile cadence.
+    timeout.reconciliation: 180s
+
+# Components: keep the essentials, drop what we don't use locally.
+dex:
+  enabled: false
+notifications:
+  enabled: false
+applicationSet:
+  enabled: true
+
+redis-ha:
+  enabled: false
+
+controller:
+  resources:
+    requests:
+      cpu: 250m
+      memory: 256Mi
+    limits:
+      memory: 512Mi
+
+repoServer:
+  resources:
+    requests:
+      cpu: 100m
+      memory: 192Mi
+    limits:
+      memory: 384Mi
+
+server:
+  service:
+    type: ClusterIP
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      memory: 256Mi

@@ -1,0 +1,35 @@
+# kube-prometheus-stack — installed first (sync-wave -20) so the Prometheus
+# Operator CRDs exist before any ServiceMonitor/PrometheusRule is applied.
+# Multi-source: the chart comes from the Helm repo; values come from THIS git
+# repo (the `$values` ref). ServerSideApply handles the very large CRDs.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: kube-prometheus-stack
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "-20"
+  finalizers:
+  - resources-finalizer.argocd.argoproj.io
+spec:
+  project: platform
+  sources:
+  - repoURL: https://prometheus-community.github.io/helm-charts
+    chart: kube-prometheus-stack
+    targetRevision: 87.3.0
+    helm:
+      valueFiles:
+      - $values/observability-driven-gitops-release-system/observability/values/kube-prometheus-stack.values.yaml
+  - repoURL: "https://github.com/onedord1/DevOps-Projects.git"
+    targetRevision: "HEAD"
+    ref: values
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: monitoring
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+    - CreateNamespace=true
+    - ServerSideApply=true

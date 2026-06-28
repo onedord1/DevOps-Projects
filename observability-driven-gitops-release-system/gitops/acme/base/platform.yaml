@@ -1,0 +1,75 @@
+# Shared platform resources for the Acme workloads.
+#
+# auth secret: the EdDSA signing seed (ADR-0006). This is a CLEARLY-INSECURE dev
+# value; in real environments source it from External Secrets Operator / a KMS.
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: acme-auth
+type: Opaque
+stringData:
+  AUTH_SEED: "0000000000000000000000000000000000000000000000000000000000000001"
+---
+# NATS + JetStream for the order/notification event flow (ADR-0007).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nats
+  labels:
+    app.kubernetes.io/name: nats
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: nats
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: nats
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+      - name: nats
+        image: nats:2.10-alpine
+        args: [ "-js", "-m", "8222" ]
+        ports:
+        - name: client
+          containerPort: 4222
+        - name: monitor
+          containerPort: 8222
+        readinessProbe:
+          httpGet:
+            path: /healthz
+            port: monitor
+          initialDelaySeconds: 3
+          periodSeconds: 10
+        resources:
+          requests:
+            cpu: 50m
+            memory: 64Mi
+          limits:
+            memory: 128Mi
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop: [ "ALL" ]
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nats
+  labels:
+    app.kubernetes.io/name: nats
+spec:
+  selector:
+    app.kubernetes.io/name: nats
+  ports:
+  - name: client
+    port: 4222
+    targetPort: client

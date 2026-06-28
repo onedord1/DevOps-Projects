@@ -1,0 +1,26 @@
+# Acme application workloads (sync-wave 0): the five services + NATS, rendered
+# from the dev Kustomize overlay. Belongs to the tightly-scoped `acme` project.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: acme
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+  finalizers:
+  - resources-finalizer.argocd.argoproj.io
+spec:
+  project: acme
+  source:
+    repoURL: "https://github.com/onedord1/DevOps-Projects.git"
+    targetRevision: "HEAD"
+    path: observability-driven-gitops-release-system/gitops/acme/overlays/dev
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: acme
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+    - CreateNamespace=false # acme namespace is created in Phase 2

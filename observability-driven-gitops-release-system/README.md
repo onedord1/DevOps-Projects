@@ -96,7 +96,7 @@ observability-driven-gitops-release-system/
 ├── apps/                     # Acme microservices (Go) + Dockerfiles (phase 3)
 ├── infra/                    # Terraform: reusable AWS modules + per-env state (phase 4)
 ├── observability/            # Prometheus, Grafana, Loki, Alloy, OTel + SLIs (phase 5)
-├── gitops/                   # (phase 6) Argo CD apps + desired state
+├── gitops/                   # Argo CD app-of-apps + desired state (phase 6)
 ├── rollouts/                 # (phase 7) Argo Rollouts + AnalysisTemplates
 ├── ci/                       # (phase 8) GitLab CI + DevSecOps
 └── demos/                    # (phase 10) demo + fault-injection scenarios
@@ -153,10 +153,11 @@ make down                                  # prompts before destroying
 - **[Phase 3 — Acme microservices guide](./apps/README.md)**
 - **[Phase 4 — Infrastructure as Code guide](./infra/README.md)**
 - **[Phase 5 — Observability stack guide](./observability/README.md)**
+- **[Phase 6 — GitOps with Argo CD guide](./gitops/README.md)**
 
 ## Project status
 
-🟢 **Phase 5 — Observability Stack: complete.** `make observability` installs Prometheus, Grafana, Loki, Alloy, and the OTel Collector with Acme SLI rules and dashboards. See [docs/PHASES.md](./docs/PHASES.md) for what's next.
+🟢 **Phase 6 — GitOps with Argo CD: complete.** `make gitops` brings the observability stack and Acme workloads under Argo CD (app-of-apps, sync-wave ordered). See [docs/PHASES.md](./docs/PHASES.md) for what's next.
 
 ## License
 

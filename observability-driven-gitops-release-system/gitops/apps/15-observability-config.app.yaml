@@ -1,0 +1,28 @@
+# Acme observability config (sync-wave -5): the ServiceMonitor + recording/alert
+# rules. Runs AFTER kube-prometheus-stack so the Prometheus Operator CRDs exist.
+# A plain directory source (no Helm/Kustomize) applies the raw manifests.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: observability-config
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "-5"
+  finalizers:
+  - resources-finalizer.argocd.argoproj.io
+spec:
+  project: platform
+  source:
+    repoURL: "https://github.com/onedord1/DevOps-Projects.git"
+    targetRevision: "HEAD"
+    path: observability-driven-gitops-release-system/observability/prometheus
+    directory:
+      recurse: true
+      include: "{servicemonitor-acme.yaml,rules/*.yaml}"
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: monitoring
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true

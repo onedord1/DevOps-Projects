@@ -19,7 +19,7 @@ This platform is built **incrementally**. Each phase is self-contained, validate
 | 3 | Acme Microservices | ✅ | 5 instrumented Go services (RED + business metrics), EdDSA auth, NATS events, distroless images |
 | 4 | Infrastructure as Code (Terraform) | ✅ | Reusable AWS modules (VPC/EKS/ECR) + isolated per-env state (dev/staging/prod) |
 | 5 | Observability Stack | ✅ | Prometheus, Grafana, Loki, Alloy, OTel Collector + Acme SLI rules/dashboards |
-| 6 | GitOps with Argo CD | ⬜ | App-of-apps, desired-state repo structure |
+| 6 | GitOps with Argo CD | ✅ | Argo CD app-of-apps managing observability + Acme (Kustomize), sync-wave ordered |
 | 7 | Progressive Delivery | ⬜ | Argo Rollouts canary + reusable AnalysisTemplates |
 | 8 | CI/CD & DevSecOps | ⬜ | GitLab CI, Trivy, Syft (SBOM), Cosign signing |
 | 9 | SLOs, Incidents & Reporting | ⬜ | Error budgets, incident automation, deploy reports |
@@ -104,9 +104,17 @@ Prometheus (scrape + recording/alerting rules), Grafana (provisioned dashboards)
 8. **Git commits** — `feat(observability): Prometheus/Grafana/Loki/Alloy/OTel stack + Acme SLIs (phase 5)`.
 9. **README updates** — `observability/README.md` guide; status set to "Phase 5 complete".
 
-### Phase 6 — GitOps with Argo CD ⬜
+### Phase 6 — GitOps with Argo CD ✅
 
-App-of-apps pattern, desired-state repository structure, sync policies, drift detection, and the separation between application source and deployment state.
+1. **Objective** — Make Git the single source of truth: Argo CD continuously reconciles the observability stack and the Acme workloads from this repo.
+2. **Architecture** — Helm-installed Argo CD (chart 10.0.0, app v3.4.4) + **app-of-apps**: a root Application watches `gitops/apps/`; child Applications install the four observability charts (multi-source Helm + git values) and the Acme Kustomize overlay. Two AppProjects (`platform`, `acme`) scope permissions; **sync waves** order CRDs→dependents. See [gitops/README.md](../../gitops/README.md).
+3. **Design decisions** — [ADR-0010](./adr/0010-gitops-argocd.md): Argo CD over Flux; app-of-apps over pure ApplicationSet at this stage; multi-source Helm (charts upstream, values in git); Kustomize for the app; ESO (not Vault plugin) as the production secrets path.
+4. **Files** — `gitops/charts.env`, `gitops/values/argocd.values.yaml`, `gitops/projects/*`, `gitops/bootstrap/root-app.yaml`, `gitops/apps/*.app.yaml` (6 children), `gitops/acme/{base,overlays/dev}/*`, `gitops/{install,uninstall,set-repo}.sh`, `gitops/README.md`, Makefile `gitops`/`gitops-down`.
+5. **Implementation** — Automated sync (prune + selfHeal), ServerSideApply for kube-prometheus-stack CRDs, sync-wave ordering; Acme services deployed as Deployments + Service + HTTPRoute + NATS + auth Secret, labelled for the Phase 5 ServiceMonitor.
+6. **Validation** — `make lint-scripts` clean; all 18 GitOps YAML files parse; `kubectl kustomize gitops/acme/overlays/dev` builds (5 services + NATS, images remapped, `part-of` label on Services without touching selectors).
+7. **Demo** — `PUSH=1 make build-apps` → `make gitops` → watch `kubectl -n argocd get applications -w` converge → browse storefront + Grafana.
+8. **Git commits** — `feat(gitops): Argo CD app-of-apps managing observability + Acme (phase 6)`.
+9. **README updates** — `gitops/README.md` guide; status set to "Phase 6 complete".
 
 ### Phase 7 — Progressive Delivery ⬜
 

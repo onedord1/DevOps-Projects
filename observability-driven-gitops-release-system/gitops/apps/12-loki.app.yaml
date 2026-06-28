@@ -1,0 +1,31 @@
+# Loki (sync-wave -15).
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: loki
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "-15"
+  finalizers:
+  - resources-finalizer.argocd.argoproj.io
+spec:
+  project: platform
+  sources:
+  - repoURL: https://grafana.github.io/helm-charts
+    chart: loki
+    targetRevision: 7.1.0
+    helm:
+      valueFiles:
+      - $values/observability-driven-gitops-release-system/observability/values/loki.values.yaml
+  - repoURL: "https://github.com/onedord1/DevOps-Projects.git"
+    targetRevision: "HEAD"
+    ref: values
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: monitoring
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+    - CreateNamespace=true

@@ -1,0 +1,27 @@
+# Root Application (app-of-apps). Argo CD watches gitops/apps/ and reconciles
+# every child Application it finds there. Adding a service later is a single
+# committed *.app.yaml file — no manual kubectl. repoURL points at this repo;
+# re-point forks with gitops/set-repo.sh.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: root
+  namespace: argocd
+  finalizers:
+  - resources-finalizer.argocd.argoproj.io
+spec:
+  project: platform
+  source:
+    repoURL: "https://github.com/onedord1/DevOps-Projects.git"
+    targetRevision: "HEAD"
+    path: observability-driven-gitops-release-system/gitops/apps
+    directory:
+      recurse: true
+      include: "*.app.yaml"
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
