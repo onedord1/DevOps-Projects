@@ -1,0 +1,17 @@
+# k3s containerd registry configuration — installed to
+# /etc/rancher/k3s/registries.yaml
+#
+# Routes pulls for `localhost:5000` (and the friendly alias
+# `registry.localhost:5000`) to the local development registry started by
+# clusters/bootstrap/01-local-registry.sh. Because native k3s runs in the
+# host network namespace, `localhost:5000` resolves to that registry directly.
+#
+# This lets Phase 3 build → push → deploy entirely offline, with no external
+# registry credentials required.
+mirrors:
+  "localhost:5000":
+    endpoint:
+    - "http://localhost:5000"
+  "registry.localhost:5000":
+    endpoint:
+    - "http://localhost:5000"

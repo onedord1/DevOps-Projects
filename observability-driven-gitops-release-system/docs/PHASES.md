@@ -15,7 +15,7 @@ This platform is built **incrementally**. Each phase is self-contained, validate
 | # | Phase | Status | Outcome |
 |---|---|---|---|
 | 1 | Foundation & Scaffolding | ✅ | Repo skeleton, docs framework, ADR process, Makefile, tooling checks |
-| 2 | Local Kubernetes Platform | ⬜ | Reproducible Kind cluster + bootstrap automation |
+| 2 | Local Kubernetes Platform | ✅ | Reproducible k3s cluster + registry + ingress + bootstrap automation |
 | 3 | Acme Microservices | ⬜ | 5 instrumented services with Dockerfiles + metrics |
 | 4 | Infrastructure as Code (Terraform) | ⬜ | Cloud topology modules + environments |
 | 5 | Observability Stack | ⬜ | Prometheus, Grafana, Loki, OTel, Alertmanager |
@@ -44,13 +44,17 @@ Every phase is documented against the same template:
 8. **Git commits** — `chore: scaffold platform repository (phase 1)`.
 9. **README updates** — Status set to "Phase 1 complete".
 
-### Phase 2 — Local Kubernetes Platform ⬜
+### Phase 2 — Local Kubernetes Platform ✅
 
-1. **Objective** — One command to stand up a reproducible multi-node Kind cluster with ingress, ready for the platform components.
-2. **Architecture** — Kind config (control-plane + workers), NGINX ingress, local registry, namespaces for `acme`, `argocd`, `monitoring`.
-3. **Design decisions** — Kind over kubeadm for laptop reproducibility; pin Kubernetes version; local registry to avoid external pulls.
-4. **Files** — `clusters/kind/kind-config.yaml`, `clusters/bootstrap/*.sh`, namespace manifests, Makefile `up`/`down` targets.
-5–9. Implemented when phase begins.
+1. **Objective** — One command (`make up`) stands up a reproducible local Kubernetes platform ready for the observability, GitOps, and delivery layers.
+2. **Architecture** — Single-node **k3s** (systemd service) with bundled metrics-server + Flannel CNI; **ingress-nginx** as a `LoadBalancer` (backed by k3s servicelb) for canary traffic routing; a **local Docker registry** wired into containerd via `registries.yaml`; platform namespaces `acme`, `argocd`, `monitoring`, `argo-rollouts`. See the diagram in [clusters/README.md](../../clusters/README.md).
+3. **Design decisions** — [ADR-0004](./adr/0004-local-platform-k3s.md): k3s over Kind/RKE2 for local; disable bundled Traefik in favor of ingress-nginx; keep servicelb; repo-local gitignored kubeconfig (never touch `~/.kube/config`); pinned versions for reproducibility.
+4. **Files** — `clusters/k3s/{config,registries}.yaml`, `clusters/manifests/namespaces.yaml`, `clusters/bootstrap/{config.env,00-preflight,01-local-registry,02-install-k3s,03-ingress-nginx,04-namespaces,bootstrap,teardown,verify}.sh`, `clusters/README.md`, Makefile `up`/`down`/`cluster-info`/`kubeconfig` targets.
+5. **Implementation** — Idempotent, strict-mode bash sourcing `scripts/lib/common.sh`; every step re-runnable; non-destructive kubeconfig handling.
+6. **Validation** — `make lint-scripts` (syntax clean), YAML parses, `make up` → node Ready + namespaces Active + ingress Running + registry catalog reachable, confirmed via `make cluster-info`.
+7. **Demo** — `make up` → `eval "$(make kubeconfig)"` → push `localhost:5000/nginx` → deploy to `acme` → `make cluster-info` → `make down`.
+8. **Git commits** — `feat(cluster): local k3s platform with registry and ingress (phase 2)`.
+9. **README updates** — Quick start expanded with Phase 2 bring-up; status set to "Phase 2 complete"; `clusters/README.md` operator guide added.
 
 ### Phase 3 — Acme Microservices ⬜
 

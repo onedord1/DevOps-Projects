@@ -39,11 +39,12 @@ check-tools: ## setup: verify required local toolchain is installed
 .PHONY: lint-scripts
 lint-scripts: ## setup: syntax-check all shell scripts (and shellcheck if available)
 	@set -e; \
-	for f in $$(find "$(SCRIPTS)" -name '*.sh'); do \
+	files=$$(find "$(REPO_ROOT)" -name '*.sh' -not -path '*/.*'); \
+	for f in $$files; do \
 		bash -n "$$f" && printf '  ok  %s\n' "$$f"; \
 	done; \
 	if command -v shellcheck >/dev/null 2>&1; then \
-		shellcheck -x $$(find "$(SCRIPTS)" -name '*.sh') && echo "shellcheck: clean"; \
+		shellcheck -x $$files && echo "shellcheck: clean"; \
 	else \
 		echo "shellcheck not installed — skipped (optional)"; \
 	fi
@@ -57,19 +58,30 @@ docs: ## docs: list documentation entrypoints
 	@printf '  docs/adr/                      architecture decision records\n'
 
 # =============================================================================
-#  Phase 2 — Local Kubernetes  (stubs until implemented)
+#  Phase 2 — Local Kubernetes (k3s)
 # =============================================================================
+KUBECONFIG_PATH := $(REPO_ROOT)/clusters/.kubeconfig
+BOOTSTRAP       := $(REPO_ROOT)/clusters/bootstrap
+
 .PHONY: up
-up: ## cluster: create local Kind cluster + bootstrap (phase 2)
-	@$(call coming_soon,2,Local Kubernetes platform)
+up: ## cluster: create local k3s cluster + registry + ingress + namespaces
+	@bash "$(BOOTSTRAP)/bootstrap.sh"
 
 .PHONY: down
-down: ## cluster: tear down local cluster (phase 2)
-	@$(call coming_soon,2,Local Kubernetes platform)
+down: ## cluster: tear down k3s cluster, registry and kubeconfig
+	@bash "$(BOOTSTRAP)/teardown.sh"
 
 .PHONY: cluster-info
-cluster-info: ## cluster: show cluster status (phase 2)
-	@$(call coming_soon,2,Local Kubernetes platform)
+cluster-info: ## cluster: read-only health summary of the local platform
+	@bash "$(BOOTSTRAP)/verify.sh"
+
+.PHONY: kubeconfig
+kubeconfig: ## cluster: print the command to use this cluster's kubeconfig
+	@if [ -f "$(KUBECONFIG_PATH)" ]; then \
+		printf 'export KUBECONFIG=%s\n' "$(KUBECONFIG_PATH)"; \
+	else \
+		printf '\033[33m[notice]\033[0m no kubeconfig yet — run: make up\n'; \
+	fi
 
 # =============================================================================
 #  Later phases — stable interface, implemented just-in-time

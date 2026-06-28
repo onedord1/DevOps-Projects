@@ -1,0 +1,40 @@
+# Platform namespaces. Created in Phase 2; populated by later phases.
+# Labels follow Kubernetes recommended `app.kubernetes.io` + Pod Security
+# Standards conventions so later phases can target namespaces predictably.
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: acme
+  labels:
+    app.kubernetes.io/part-of: acme-platform
+    platform.acme.io/tier: workloads
+    pod-security.kubernetes.io/enforce: baseline
+    pod-security.kubernetes.io/warn: restricted
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: argocd
+  labels:
+    app.kubernetes.io/part-of: acme-platform
+    platform.acme.io/tier: gitops
+    pod-security.kubernetes.io/enforce: baseline
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: monitoring
+  labels:
+    app.kubernetes.io/part-of: acme-platform
+    platform.acme.io/tier: observability
+    pod-security.kubernetes.io/enforce: baseline
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: argo-rollouts
+  labels:
+    app.kubernetes.io/part-of: acme-platform
+    platform.acme.io/tier: delivery
+    pod-security.kubernetes.io/enforce: baseline

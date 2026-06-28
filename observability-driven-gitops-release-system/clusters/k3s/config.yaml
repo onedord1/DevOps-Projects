@@ -1,0 +1,20 @@
+# k3s server configuration — installed to /etc/rancher/k3s/config.yaml
+#
+# Why these settings:
+#   write-kubeconfig-mode 0644  -> the generated kubeconfig is readable by our
+#                                  user so we can copy it without sudo afterwards.
+#   disable: traefik            -> k3s ships Traefik by default; we replace it
+#                                  with ingress-nginx for predictable, well-
+#                                  documented Argo Rollouts canary traffic
+#                                  weighting (see ADR-0004).
+#   servicelb (klipper) is LEFT ENABLED so the ingress-nginx LoadBalancer
+#   Service receives the node IP and is reachable on localhost.
+#   metrics-server ships with k3s, so HPA/`kubectl top` work out of the box.
+write-kubeconfig-mode: "0644"
+disable:
+- traefik
+node-label:
+- "platform.acme.io/role=control-plane"
+# Keep the kubelet lenient on a laptop so the platform components co-exist.
+kubelet-arg:
+- "max-pods=250"

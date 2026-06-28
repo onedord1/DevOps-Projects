@@ -92,8 +92,8 @@ observability-driven-gitops-release-system/
 │   ├── architecture/         # system + lifecycle diagrams (Mermaid)
 │   └── adr/                  # Architecture Decision Records
 ├── scripts/                  # reusable shell automation
+├── clusters/                 # local k3s platform: bootstrap + config (phase 2)
 ├── apps/                     # (phase 3) Acme microservices + Dockerfiles
-├── clusters/                 # (phase 2) Kind / cluster bootstrap
 ├── infra/                    # (phase 4) Terraform modules
 ├── observability/            # (phase 5) Prometheus, Grafana, Loki, OTel, Alertmanager
 ├── gitops/                   # (phase 6) Argo CD apps + desired state
@@ -104,25 +104,56 @@ observability-driven-gitops-release-system/
 
 ## Quick start
 
+### Prerequisites
+
+- A **Linux** host (k3s runs as a `systemd` service; on Windows use WSL2, on macOS a Linux VM)
+- **sudo** privileges, **Docker** running, and **kubectl** + **curl** on your `PATH`
+
 ```bash
+# verify your local toolchain (docker, kubectl, k3s deps, ...)
+make check-tools
+
 # show every available workflow target with descriptions
 make help
-
-# verify your local toolchain (kubectl, kind, helm, docker, ...)
-make check-tools
 ```
 
-Full environment bring-up (`make up`) becomes available in **Phase 2**.
+### Phase 2 — bring up the local platform
+
+A single command provisions a complete local Kubernetes platform: a pinned **k3s** cluster, a **local container registry**, the **ingress-nginx** controller, and the platform **namespaces**.
+
+```bash
+make up                                   # create the cluster (idempotent, ~1–3 min)
+eval "$(make kubeconfig)"                  # point your shell at the cluster
+make cluster-info                          # read-only health summary
+```
+
+What you get:
+
+| Component | Detail |
+|---|---|
+| k3s cluster | Single node `acme-platform`, pinned version, bundled metrics-server + CNI |
+| Local registry | `localhost:5000` wired into k3s containerd for an offline build→deploy loop |
+| Ingress | `ingress-nginx` as a `LoadBalancer` (the canary traffic router used in Phase 7) |
+| Namespaces | `acme`, `argocd`, `monitoring`, `argo-rollouts` |
+
+Tear it down when you're done:
+
+```bash
+make down                                  # prompts before destroying
+```
+
+> Full step-by-step instructions, configuration knobs, the local-registry workflow, and a troubleshooting table live in **[clusters/README.md](./clusters/README.md)**.
 
 ## Documentation index
 
 - **[Phased delivery roadmap](./docs/PHASES.md)**
 - **[Architecture overview](./docs/architecture/overview.md)**
 - **[Architecture Decision Records](./docs/adr/README.md)**
+- **[Phase 2 — Local platform operator guide](./clusters/README.md)**
 
 ## Project status
 
-🟢 **Phase 1 — Foundation & Scaffolding: complete.** See [docs/PHASES.md](./docs/PHASES.md) for what's next.
+🟢 **Phase 2 — Local Kubernetes Platform (k3s): complete.** `make up` provisions a full local cluster. See [docs/PHASES.md](./docs/PHASES.md) for what's next.
 
 ## License
 
