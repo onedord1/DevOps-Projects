@@ -16,7 +16,7 @@ This platform is built **incrementally**. Each phase is self-contained, validate
 |---|---|---|---|
 | 1 | Foundation & Scaffolding | ✅ | Repo skeleton, docs framework, ADR process, Makefile, tooling checks |
 | 2 | Local Kubernetes Platform | ✅ | Reproducible k3s cluster + registry + Gateway API (Envoy Gateway) + bootstrap automation |
-| 3 | Acme Microservices | ⬜ | 5 instrumented services with Dockerfiles + metrics |
+| 3 | Acme Microservices | ✅ | 5 instrumented Go services (RED + business metrics), EdDSA auth, NATS events, distroless images |
 | 4 | Infrastructure as Code (Terraform) | ⬜ | Cloud topology modules + environments |
 | 5 | Observability Stack | ⬜ | Prometheus, Grafana, Loki, OTel, Alertmanager |
 | 6 | GitOps with Argo CD | ⬜ | App-of-apps, desired-state repo structure |
@@ -59,6 +59,18 @@ Every phase is documented against the same template:
 ### Phase 3 — Acme Microservices ⬜
 
 `frontend`, `payment`, `order`, `inventory`, `notification` — each instrumented with Prometheus metrics (RED + business SLO metrics), health/readiness probes, OTel tracing hooks, and a multi-stage Dockerfile.
+
+### Phase 3 — Acme Microservices ✅
+
+1. **Objective** — Five small, fully instrumented services that emit the exact RED and business metrics the platform's progressive-delivery analysis depends on, packaged as minimal container images.
+2. **Architecture** — One Go module with shared `pkg/` libraries (app bootstrap, auth, events, obs, httpx, health, faults) and five `services/` (`frontend`, `payment`, `order`, `inventory`, `notification`). frontend is the BFF + auth issuer; order orchestrates inventory + payment and publishes `order.created` to NATS; notification consumes it. See the diagram in [apps/README.md](../../apps/README.md).
+3. **Design decisions** — Go 1.26 + stdlib routing; Prometheus client + OpenTelemetry (otelhttp) for metrics/traces; [ADR-0006](./adr/0006-authentication-eddsa-jwt.md) EdDSA JWT auth (verify-only via JWKS); [ADR-0007](./adr/0007-messaging-nats-jetstream.md) NATS JetStream broker; distroless non-root static images via one parameterized Dockerfile.
+4. **Files** — `apps/go.mod`, `apps/pkg/{app,auth,config,events,faults,health,httpx,logging,obs}`, `apps/services/{frontend,payment,order,inventory,notification}/main.go`, `apps/Dockerfile`, `apps/.dockerignore`, `apps/deploy/docker-compose.yaml`, `apps/README.md`, `scripts/build-apps.sh`, Makefile `build-apps`/`test-apps`/`compose-up`/`compose-down`.
+5. **Implementation** — All services compile to static binaries; shared libraries keep each `main` thin. Env-driven 12-factor config and fault injection (`FAIL_RATE`/`LATENCY_MS`).
+6. **Validation** — `make test-apps` (go vet + build clean); end-to-end smoke test confirmed login→products→checkout, cross-service JWT verification, 401 on missing token, and `FAIL_RATE=1` driving `payments_total{declined}` + `orders_total{failed}` (the rollback signal).
+7. **Demo** — `make compose-up` → login → `/api/products` → `/api/checkout` (async notification via NATS) → `make compose-down`.
+8. **Git commits** — `feat(apps): five instrumented Go microservices with EdDSA auth + NATS (phase 3)`.
+9. **README updates** — `apps/README.md` operator guide; status set to "Phase 3 complete".
 
 ### Phase 4 — Infrastructure as Code ⬜
 

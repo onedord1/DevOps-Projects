@@ -77,7 +77,7 @@ The platform ships reusable, parameterized analysis templates used by any servic
 
 ## Technology stack
 
-`GitLab CI` · `Kubernetes` · `Gateway API` / `Envoy Gateway` · `Helm` / `Kustomize` · `Argo CD` · `Argo Rollouts` · `Prometheus` · `Grafana` · `Loki` · `OpenTelemetry` · `Alertmanager` · `Trivy` · `Cosign` · `Syft` · `Terraform` · `Docker` · `k3s`
+`GitLab CI` · `Go 1.26` · `Kubernetes` · `Gateway API` / `Envoy Gateway` · `Helm` / `Kustomize` · `Argo CD` · `Argo Rollouts` · `Prometheus` · `Grafana` · `Loki` · `OpenTelemetry` · `Alertmanager` · `NATS JetStream` · `Trivy` · `Cosign` · `Syft` · `Terraform` · `Docker` · `k3s`
 
 ## Repository layout
 
@@ -93,7 +93,7 @@ observability-driven-gitops-release-system/
 │   └── adr/                  # Architecture Decision Records
 ├── scripts/                  # reusable shell automation
 ├── clusters/                 # local k3s platform: bootstrap + config (phase 2)
-├── apps/                     # (phase 3) Acme microservices + Dockerfiles
+├── apps/                     # Acme microservices (Go) + Dockerfiles (phase 3)
 ├── infra/                    # (phase 4) Terraform modules
 ├── observability/            # (phase 5) Prometheus, Grafana, Loki, OTel, Alertmanager
 ├── gitops/                   # (phase 6) Argo CD apps + desired state
@@ -150,10 +150,11 @@ make down                                  # prompts before destroying
 - **[Architecture overview](./docs/architecture/overview.md)**
 - **[Architecture Decision Records](./docs/adr/README.md)**
 - **[Phase 2 — Local platform operator guide](./clusters/README.md)**
+- **[Phase 3 — Acme microservices guide](./apps/README.md)**
 
 ## Project status
 
-🟢 **Phase 2 — Local Kubernetes Platform (k3s): complete.** `make up` provisions a full local cluster. See [docs/PHASES.md](./docs/PHASES.md) for what's next.
+🟢 **Phase 3 — Acme Microservices: complete.** Five instrumented Go services run locally via `make compose-up`. See [docs/PHASES.md](./docs/PHASES.md) for what's next.
 
 ## License
 

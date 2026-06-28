@@ -87,8 +87,21 @@ kubeconfig: ## cluster: print the command to use this cluster's kubeconfig
 #  Later phases — stable interface, implemented just-in-time
 # =============================================================================
 .PHONY: build-apps
-build-apps: ## apps: build microservice images (phase 3)
-	@$(call coming_soon,3,Acme microservices)
+build-apps: ## apps: build (PUSH=1 to push) Acme service images into the local registry
+	@bash "$(SCRIPTS)/build-apps.sh"
+
+.PHONY: test-apps
+test-apps: ## apps: run Go vet + build for all services
+	@cd "$(REPO_ROOT)/apps" && go vet ./... && go build ./... && echo "apps: vet + build clean"
+
+.PHONY: compose-up
+compose-up: ## apps: run the full stack locally via docker compose (NATS + services)
+	@docker compose -f "$(REPO_ROOT)/apps/deploy/docker-compose.yaml" up --build -d
+	@printf 'storefront: http://localhost:8080\n'
+
+.PHONY: compose-down
+compose-down: ## apps: stop the local docker compose stack
+	@docker compose -f "$(REPO_ROOT)/apps/deploy/docker-compose.yaml" down
 
 .PHONY: tf-plan
 tf-plan: ## infra: terraform plan for dev environment (phase 4)

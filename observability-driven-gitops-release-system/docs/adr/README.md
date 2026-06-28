@@ -26,5 +26,7 @@ Each ADR follows the lightweight [Michael Nygard format](https://cognitect.com/b
 | [0003](./0003-observability-driven-promotion.md) | Observability-driven promotion & rollback | Accepted |
 | [0004](./0004-local-platform-k3s.md) | Local platform on k3s with ingress-nginx | Accepted¹ |
 | [0005](./0005-gateway-api-envoy-gateway.md) | Use Gateway API (Envoy Gateway) instead of ingress-nginx | Accepted |
+| [0006](./0006-authentication-eddsa-jwt.md) | Authentication with EdDSA (Ed25519) JWTs | Accepted |
+| [0007](./0007-messaging-nats-jetstream.md) | Event messaging with NATS JetStream | Accepted |
 
 ¹ ADR-0004's ingress-nginx decision is superseded by ADR-0005; its k3s/registry/kubeconfig decisions still stand.

@@ -18,6 +18,7 @@ TOOLS=(
   "helm|chart tooling|required|https://helm.sh/docs/intro/install/"
   "git|version control|required|https://git-scm.com/downloads"
   "make|task runner|required|your OS package manager"
+  "go|Go toolchain (build services)|optional|https://go.dev/dl/"
   "kustomize|manifest overlays|optional|https://kubectl.docs.kubernetes.io/installation/kustomize/"
   "argocd|Argo CD CLI|optional|https://argo-cd.readthedocs.io/en/stable/cli_installation/"
   "kubectl-argo-rollouts|Rollouts plugin|optional|https://argoproj.github.io/argo-rollouts/installation/"

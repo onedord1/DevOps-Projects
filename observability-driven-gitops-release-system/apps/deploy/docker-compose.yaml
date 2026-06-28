@@ -1,0 +1,82 @@
+# Local inner-loop for the Acme microservices: NATS JetStream + all five
+# services, built from the shared multi-stage Dockerfile. This is the fastest
+# way to run the whole system without Kubernetes.
+#
+#   docker compose -f apps/deploy/docker-compose.yaml up --build
+#   curl localhost:8080/api/products
+#
+# Kubernetes deployment (Rollouts + GitOps) arrives in Phases 6–7.
+
+name: acme-platform
+
+x-build: &svc-build
+  context: ..
+  dockerfile: Dockerfile
+
+x-common-env: &common-env
+  LOG_LEVEL: info
+  # Shared dev signing seed so EdDSA tokens verify across services.
+  # Override in any non-local environment.
+  AUTH_SEED: "0000000000000000000000000000000000000000000000000000000000000001"
+
+services:
+  nats:
+    image: nats:2.10-alpine
+    command: ["-js", "-m", "8222"]
+    ports:
+      - "4222:4222"   # client
+      - "8222:8222"   # monitoring
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8222/healthz"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  inventory:
+    build: { <<: *svc-build, args: { SERVICE: inventory } }
+    environment:
+      <<: *common-env
+    expose: ["8080"]
+
+  payment:
+    build: { <<: *svc-build, args: { SERVICE: payment } }
+    environment:
+      <<: *common-env
+      # Try FAIL_RATE: "0.5" to watch checkout SLOs degrade.
+      FAIL_RATE: "0"
+    expose: ["8080"]
+
+  order:
+    build: { <<: *svc-build, args: { SERVICE: order } }
+    environment:
+      <<: *common-env
+      INVENTORY_URL: http://inventory:8080
+      PAYMENT_URL: http://payment:8080
+      NATS_URL: nats://nats:4222
+    depends_on:
+      nats: { condition: service_healthy }
+      inventory: { condition: service_started }
+      payment: { condition: service_started }
+    expose: ["8080"]
+
+  notification:
+    build: { <<: *svc-build, args: { SERVICE: notification } }
+    environment:
+      <<: *common-env
+      NATS_URL: nats://nats:4222
+      NOTIFY_CHANNEL: email
+    depends_on:
+      nats: { condition: service_healthy }
+    expose: ["8080"]
+
+  frontend:
+    build: { <<: *svc-build, args: { SERVICE: frontend } }
+    environment:
+      <<: *common-env
+      ORDER_URL: http://order:8080
+      INVENTORY_URL: http://inventory:8080
+    ports:
+      - "8080:8080"
+    depends_on:
+      order: { condition: service_started }
+      inventory: { condition: service_started }
