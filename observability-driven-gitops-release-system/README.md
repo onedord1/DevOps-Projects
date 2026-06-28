@@ -160,10 +160,30 @@ make down                                  # prompts before destroying
 - **[Phase 7 — Progressive delivery guide](./rollouts/README.md)**
 - **[Phase 8 — CI/CD & DevSecOps guide](./ci/README.md)**
 - **[Phase 9 — SLOs, Incidents & Reporting guide](./slos/README.md)**
+- **[Phase 10 — Demos, Fault Injection & Hardening guide](./demos/README.md)**
 
-## Project status
+## 🎉 Platform complete
 
-🟢 **Phase 9 — SLOs, Incidents & Reporting: complete.** Sloth SLO-as-code generates MWMBR burn-rate PrometheusRules; the incident webhook closes the rollback→incident loop; Argo Rollouts notifications annotate Grafana dashboards on every deploy; deploy-report.sh surfaces a 24h SLI snapshot. See [docs/PHASES.md](./docs/PHASES.md) for what's next.
+All 10 phases are delivered. The repository is a **production-grade, end-to-end Platform Engineering reference** demonstrating:
+
+| Capability | How |
+|---|---|
+| GitOps | Argo CD app-of-apps, sync-wave ordered, self-healing |
+| Progressive delivery | Argo Rollouts canary (5→20→50→100%) + Gateway API traffic routing |
+| Observability-driven decisions | 8 reusable Prometheus AnalysisTemplates gate every canary step |
+| Automatic rollback | Any failing SLO aborts the rollout and restores stable |
+| SLO-as-code | Sloth MWMBR burn-rate rules + error-budget tracking |
+| Incident automation | Rollback → incident opened → Grafana annotated |
+| Supply-chain security | Buildah + Trivy gate + Syft SBOM + Cosign keyless signing |
+| Infrastructure as Code | Terraform (AWS VPC + EKS Auto Mode + ECR) per-env isolated state |
+| Reproducible local dev | k3s + Gateway API (Envoy Gateway) + local registry |
+| Demo-ready | 4 fault scenarios, guided script, troubleshooting runbook, screenshots checklist |
+
+```bash
+make demo          # guided end-to-end interactive demo
+make port-forwards # open all platform UIs (Argo CD, Grafana, Prometheus, Alertmanager, Incidents)
+make deploy-report # 24h SLI snapshot + open incidents
+```
 
 ## License
 

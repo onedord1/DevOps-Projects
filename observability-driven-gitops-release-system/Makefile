@@ -170,8 +170,22 @@ deploy-report: ## slos: print a deployment health report (SLIs + incidents, last
 	@bash "$(REPO_ROOT)/slos/deploy-report.sh"
 
 .PHONY: demo
-demo: ## demo: run guided end-to-end demo (phase 10)
-	@$(call coming_soon,10,Demos and fault injection)
+demo: ## demo: run the interactive end-to-end demo (phase 10)
+	@bash "$(REPO_ROOT)/demos/scripts/demo-full.sh"
+
+.PHONY: demo-load
+demo-load: ## demo: start background storefront traffic (requires Gateway address)
+	@GW="$$(kubectl -n acme get gateway acme-gateway -o jsonpath='{.status.addresses[0].value}' 2>/dev/null)" ; \
+	 [ -n "$$GW" ] || { printf '\033[31mGateway not ready\033[0m\n'; exit 1; } ; \
+	 bash "$(REPO_ROOT)/demos/scripts/load-gen.sh" "$$GW"
+
+.PHONY: demo-reset
+demo-reset: ## demo: restore a clean baseline between demo runs
+	@bash "$(REPO_ROOT)/demos/scripts/reset-demo.sh"
+
+.PHONY: port-forwards
+port-forwards: ## demo: open all platform UIs (Argo CD, Grafana, Prometheus, Alertmanager, Incidents)
+	@bash "$(REPO_ROOT)/demos/scripts/port-forwards.sh"
 
 # ---- helpers ----------------------------------------------------------------
 # coming_soon <phase> <name>

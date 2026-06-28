@@ -197,5 +197,5 @@ release:
       sed -i -E "/name: acme\/${svc}\$/,/newTag:/ s/(newTag:).*/\1 ${IMAGE_TAG}/" "$OVERLAY/kustomization.yaml"
     done
   - git add "$OVERLAY/kustomization.yaml"
-  - git commit -m "release: bump acme images to ${IMAGE_TAG} [skip ci]"
+  - git commit -m "release bump acme images to ${IMAGE_TAG} [skip ci]"
   - git push "https://oauth2:${GITOPS_PUSH_TOKEN}@${CI_SERVER_HOST}/${CI_PROJECT_PATH}.git" "HEAD:${CI_DEFAULT_BRANCH}"
