@@ -77,7 +77,7 @@ The platform ships reusable, parameterized analysis templates used by any servic
 
 ## Technology stack
 
-`GitLab CI` · `Kubernetes` · `Helm` / `Kustomize` · `Argo CD` · `Argo Rollouts` · `Prometheus` · `Grafana` · `Loki` · `OpenTelemetry` · `Alertmanager` · `Trivy` · `Cosign` · `Syft` · `Terraform` · `Docker` · `Kind`
+`GitLab CI` · `Kubernetes` · `Gateway API` / `Envoy Gateway` · `Helm` / `Kustomize` · `Argo CD` · `Argo Rollouts` · `Prometheus` · `Grafana` · `Loki` · `OpenTelemetry` · `Alertmanager` · `Trivy` · `Cosign` · `Syft` · `Terraform` · `Docker` · `k3s`
 
 ## Repository layout
 
@@ -133,7 +133,7 @@ What you get:
 |---|---|
 | k3s cluster | Single node `acme-platform`, pinned version, bundled metrics-server + CNI |
 | Local registry | `localhost:5000` wired into k3s containerd for an offline build→deploy loop |
-| Ingress | `ingress-nginx` as a `LoadBalancer` (the canary traffic router used in Phase 7) |
+| Ingress | **Gateway API v1.5** via **Envoy Gateway** — the canary traffic router used in Phase 7 |
 | Namespaces | `acme`, `argocd`, `monitoring`, `argo-rollouts` |
 
 Tear it down when you're done:

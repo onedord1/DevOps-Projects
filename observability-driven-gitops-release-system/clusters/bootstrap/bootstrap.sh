@@ -13,8 +13,8 @@ STEPS=(
   "00-preflight.sh"
   "01-local-registry.sh"
   "02-install-k3s.sh"
-  "03-ingress-nginx.sh"
-  "04-namespaces.sh"
+  "03-namespaces.sh"
+  "04-gateway-api.sh"
 )
 
 print_summary() {

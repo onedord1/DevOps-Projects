@@ -12,7 +12,7 @@ flowchart TB
             api["kube-apiserver :6443"]
             node["Node: acme-platform<br/>containerd + Flannel CNI + metrics-server"]
             subgraph ns["Namespaces"]
-                ing["ingress-nginx<br/>LoadBalancer :80/:443"]
+                gw["Envoy Gateway<br/>Gateway API · LB :80"]
                 acme["acme"]
                 argocd["argocd"]
                 monitoring["monitoring"]
@@ -34,15 +34,15 @@ The bootstrap performs five idempotent steps:
 | 0 | `00-preflight.sh` | Verifies Linux, `sudo`, `curl`/`docker`/`kubectl`, the Docker daemon, and that ports 6443/80/443/5000 are free. |
 | 1 | `01-local-registry.sh` | Starts a `registry:2` container on `:5000` with a persistent volume. |
 | 2 | `02-install-k3s.sh` | Stages config + registry mirror, installs pinned k3s, exports a repo-local kubeconfig, waits for node Ready. |
-| 3 | `03-ingress-nginx.sh` | Installs ingress-nginx (Helm if present, else pinned static manifest) and waits for readiness. |
-| 4 | `04-namespaces.sh` | Creates `acme`, `argocd`, `monitoring`, `argo-rollouts`. |
+| 3 | `03-namespaces.sh` | Creates `acme`, `argocd`, `monitoring`, `argo-rollouts`. |
+| 4 | `04-gateway-api.sh` | Installs Gateway API CRDs + Envoy Gateway, then the `acme` GatewayClass and shared `acme-gateway`. |
 
 ## Prerequisites
 
 - **Linux** host (k3s installs a `systemd` service). On Windows use WSL2; on macOS use a Linux VM.
 - **sudo** privileges (k3s install and uninstall are privileged).
 - **Docker** running and usable by your user (`docker info` succeeds).
-- **kubectl** and **curl** on `PATH`.
+- **kubectl**, **curl**, and **Helm** on `PATH` (Helm installs Envoy Gateway).
 
 Verify everything at once:
 
@@ -76,11 +76,11 @@ kubectl get ns
 make cluster-info
 ```
 
-This read-only command prints cluster-info, nodes, the platform namespaces, the ingress-nginx pods/service, and the local registry catalog. A healthy result looks like:
+This read-only command prints cluster-info, nodes, the platform namespaces, the Envoy Gateway pods, the Gateway resources, and the local registry catalog. A healthy result looks like:
 
 - Node `acme-platform` in `Ready` state
 - All four namespaces `Active`
-- `ingress-nginx-controller` pod `Running` and its `LoadBalancer` Service with an assigned IP
+- `envoy-gateway` pod `Running` in `envoy-gateway-system`; `GatewayClass/acme` Accepted and `Gateway/acme-gateway` Programmed with an address
 - `http://localhost:5000/v2/_catalog` returning JSON
 
 ## Use the local registry
@@ -110,7 +110,8 @@ All values live in `clusters/bootstrap/config.env` and are overridable via the e
 | `CLUSTER_NAME` | `acme-platform` | Logical cluster/node name |
 | `REGISTRY_NAME` | `acme-registry` | Local registry container name |
 | `REGISTRY_PORT` | `5000` | Local registry host port |
-| `INGRESS_NGINX_VERSION` | `v1.11.3` | Pinned ingress-nginx controller |
+| `GATEWAY_API_VERSION` | `v1.5.0` | Pinned Gateway API CRDs (standard channel) |
+| `ENVOY_GATEWAY_VERSION` | `v1.8.1` | Pinned Envoy Gateway controller |
 | `KUBECONFIG_PATH` | `clusters/.kubeconfig` | Where the kubeconfig is written |
 
 Example:
@@ -135,7 +136,7 @@ Teardown runs `k3s-uninstall.sh` (removes the cluster and its data), removes the
 |---|---|---|
 | `port 6443 already in use` | A previous k3s or another API server is running | `make down`, or stop the conflicting service |
 | `make up` hangs at "waiting for node Ready" | CNI/image pulls slow or blocked | `sudo systemctl status k3s`, then `sudo journalctl -u k3s -e` |
-| ingress controller never Ready | Image pull blocked or no LoadBalancer IP | `kubectl -n ingress-nginx describe pod`; ensure servicelb is enabled |
+| ingress controller never Ready | Image pull blocked or no LoadBalancer IP | `kubectl -n envoy-gateway-system describe pod`; ensure servicelb is enabled |
 | `ErrImagePull` for `localhost:5000/...` | Registry down or mirror not staged | `curl localhost:5000/v2/`, confirm `/etc/rancher/k3s/registries.yaml` exists, then `sudo systemctl restart k3s` |
 | `kubectl` can't connect | `KUBECONFIG` not exported | `eval "$(make kubeconfig)"` |
 | Permission denied writing `/etc/rancher/k3s` | No sudo | Re-run with a user that has sudo |
@@ -151,4 +152,4 @@ docker logs acme-registry            # registry logs
 
 ## Design notes
 
-See [ADR-0004](../docs/adr/0004-local-platform-k3s.md) for the full rationale (why k3s, why ingress-nginx over the bundled Traefik, why a local registry, why a repo-local kubeconfig). The production topology is described as Terraform in Phase 4.
+See [ADR-0004](../docs/adr/0004-local-platform-k3s.md) (k3s, local registry, repo-local kubeconfig) and [ADR-0005](../docs/adr/0005-gateway-api-envoy-gateway.md) (why Gateway API + Envoy Gateway replaced ingress-nginx, and how it sets up Argo Rollouts canary in Phase 7). The production topology is described as Terraform in Phase 4.

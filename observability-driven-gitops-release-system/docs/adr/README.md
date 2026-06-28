@@ -24,4 +24,7 @@ Each ADR follows the lightweight [Michael Nygard format](https://cognitect.com/b
 | [0001](./0001-record-architecture-decisions.md) | Record architecture decisions | Accepted |
 | [0002](./0002-progressive-delivery-with-argo-rollouts.md) | Progressive delivery with Argo Rollouts | Accepted |
 | [0003](./0003-observability-driven-promotion.md) | Observability-driven promotion & rollback | Accepted |
-| [0004](./0004-local-platform-k3s.md) | Local platform on k3s with ingress-nginx | Accepted |
+| [0004](./0004-local-platform-k3s.md) | Local platform on k3s with ingress-nginx | Accepted¹ |
+| [0005](./0005-gateway-api-envoy-gateway.md) | Use Gateway API (Envoy Gateway) instead of ingress-nginx | Accepted |
+
+¹ ADR-0004's ingress-nginx decision is superseded by ADR-0005; its k3s/registry/kubeconfig decisions still stand.

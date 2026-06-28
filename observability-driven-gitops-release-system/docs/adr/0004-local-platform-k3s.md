@@ -1,10 +1,10 @@
 # ADR-0004: Local platform on k3s with ingress-nginx
 
-- **Status:** Accepted
+- **Status:** Accepted (the ingress-nginx decision is superseded by [ADR-0005](./0005-gateway-api-envoy-gateway.md))
 - **Date:** 2026-06-28
 - **Deciders:** Platform Engineering, SRE
 - **Supersedes:** —
-- **Superseded by:** —
+- **Superseded by:** [ADR-0005](./0005-gateway-api-envoy-gateway.md) (ingress portion only)
 
 ## Context
 

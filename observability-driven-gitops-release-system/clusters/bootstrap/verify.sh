@@ -24,9 +24,10 @@ main() {
   section "Platform namespaces"
   kubectl get ns "${PLATFORM_NAMESPACES[@]}" 2>/dev/null || log_warn "some namespaces missing"
 
-  section "Ingress controller"
-  kubectl get pods -n ingress-nginx 2>/dev/null || log_warn "ingress-nginx not installed"
-  kubectl get svc -n ingress-nginx 2>/dev/null || true
+  section "Gateway (Envoy Gateway)"
+  kubectl get pods -n envoy-gateway-system 2>/dev/null || log_warn "Envoy Gateway not installed"
+  kubectl get gatewayclass acme 2>/dev/null || log_warn "GatewayClass 'acme' missing"
+  kubectl get gateway -n acme 2>/dev/null || log_warn "Gateway 'acme-gateway' missing"
 
   section "Local registry"
   if curl -sf "http://localhost:${REGISTRY_PORT}/v2/_catalog" >/dev/null; then

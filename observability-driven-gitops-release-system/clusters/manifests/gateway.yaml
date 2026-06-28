@@ -1,0 +1,35 @@
+# Shared Gateway for the Acme platform, implemented by Envoy Gateway.
+#
+# - GatewayClass is cluster-scoped and binds to the Envoy Gateway controller.
+# - The Gateway lives in the `acme` namespace alongside the workloads, so
+#   service HTTPRoutes (added in later phases) are same-namespace and need no
+#   ReferenceGrant.
+# - One HTTP listener on :80 accepts routes from the `acme` namespace.
+#   Argo Rollouts will manage per-service HTTPRoute weights against this
+#   Gateway during canary steps (Phase 7).
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: GatewayClass
+metadata:
+  name: acme
+  labels:
+    app.kubernetes.io/part-of: acme-platform
+spec:
+  controllerName: gateway.envoyproxy.io/gatewayclass-controller
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: acme-gateway
+  namespace: acme
+  labels:
+    app.kubernetes.io/part-of: acme-platform
+spec:
+  gatewayClassName: acme
+  listeners:
+  - name: http
+    protocol: HTTP
+    port: 80
+    allowedRoutes:
+      namespaces:
+        from: Same
