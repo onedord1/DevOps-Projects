@@ -17,7 +17,7 @@ This platform is built **incrementally**. Each phase is self-contained, validate
 | 1 | Foundation & Scaffolding | ✅ | Repo skeleton, docs framework, ADR process, Makefile, tooling checks |
 | 2 | Local Kubernetes Platform | ✅ | Reproducible k3s cluster + registry + Gateway API (Envoy Gateway) + bootstrap automation |
 | 3 | Acme Microservices | ✅ | 5 instrumented Go services (RED + business metrics), EdDSA auth, NATS events, distroless images |
-| 4 | Infrastructure as Code (Terraform) | ⬜ | Cloud topology modules + environments |
+| 4 | Infrastructure as Code (Terraform) | ✅ | Reusable AWS modules (VPC/EKS/ECR) + isolated per-env state (dev/staging/prod) |
 | 5 | Observability Stack | ⬜ | Prometheus, Grafana, Loki, OTel, Alertmanager |
 | 6 | GitOps with Argo CD | ⬜ | App-of-apps, desired-state repo structure |
 | 7 | Progressive Delivery | ⬜ | Argo Rollouts canary + reusable AnalysisTemplates |
@@ -75,6 +75,18 @@ Every phase is documented against the same template:
 ### Phase 4 — Infrastructure as Code ⬜
 
 Terraform modules describing the production-equivalent cloud topology (network, cluster, registry, IAM), with `dev` environment wiring and remote-state guidance.
+
+### Phase 4 — Infrastructure as Code ✅
+
+1. **Objective** — Production-grade, reusable Terraform describing the cloud topology, deployable to multiple environments with isolated state.
+2. **Architecture** — Reusable single-concern modules (`network` wrapping VPC `~> 6.6`, `eks` wrapping EKS `~> 21.0` Auto Mode, native `ecr`) composed per environment in `environments/{dev,staging,prod}`; each environment owns an isolated S3 state file (DynamoDB lock); a `bootstrap` stack creates the backend. See [infra/README.md](../../infra/README.md).
+3. **Design decisions** — [ADR-0008](./adr/0008-terraform-structure.md): modules + per-environment directories over flat/workspaces/Terragrunt; reuse community modules over god-modules; AWS/EKS target; pinned `terraform >= 1.9`, AWS provider `~> 6.28`.
+4. **Files** — `infra/modules/{network,eks,ecr}/*`, `infra/bootstrap/*`, `infra/environments/{dev,staging,prod}/*` (versions/providers/backend/main/variables/outputs + `<env>.tfvars` + `backend.hcl.example`), `infra/README.md`, Makefile `tf-fmt`/`tf-validate`/`tf-plan`/`tf-apply`.
+5. **Implementation** — Identical composition per env; differences expressed only in tfvars (CIDR, AZs, NAT strategy, public/private API endpoint).
+6. **Validation** — `terraform fmt -check -recursive` clean; `terraform init -backend=false && terraform validate` succeeded for `dev` and `staging` (transitively validating all three modules) and for `bootstrap`, against real providers (AWS v6.52) and pinned registry modules.
+7. **Demo** — `make tf-fmt`; `make tf-validate ENV=dev`; (with creds) bootstrap backend → `make tf-plan ENV=dev`.
+8. **Git commits** — `feat(infra): reusable Terraform modules + per-env state for AWS topology (phase 4)`.
+9. **README updates** — `infra/README.md` operator guide; status set to "Phase 4 complete".
 
 ### Phase 5 — Observability Stack ⬜
 

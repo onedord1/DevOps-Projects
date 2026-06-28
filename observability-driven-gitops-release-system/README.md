@@ -94,7 +94,7 @@ observability-driven-gitops-release-system/
 ├── scripts/                  # reusable shell automation
 ├── clusters/                 # local k3s platform: bootstrap + config (phase 2)
 ├── apps/                     # Acme microservices (Go) + Dockerfiles (phase 3)
-├── infra/                    # (phase 4) Terraform modules
+├── infra/                    # Terraform: reusable AWS modules + per-env state (phase 4)
 ├── observability/            # (phase 5) Prometheus, Grafana, Loki, OTel, Alertmanager
 ├── gitops/                   # (phase 6) Argo CD apps + desired state
 ├── rollouts/                 # (phase 7) Argo Rollouts + AnalysisTemplates
@@ -151,10 +151,11 @@ make down                                  # prompts before destroying
 - **[Architecture Decision Records](./docs/adr/README.md)**
 - **[Phase 2 — Local platform operator guide](./clusters/README.md)**
 - **[Phase 3 — Acme microservices guide](./apps/README.md)**
+- **[Phase 4 — Infrastructure as Code guide](./infra/README.md)**
 
 ## Project status
 
-🟢 **Phase 3 — Acme Microservices: complete.** Five instrumented Go services run locally via `make compose-up`. See [docs/PHASES.md](./docs/PHASES.md) for what's next.
+🟢 **Phase 4 — Infrastructure as Code (Terraform): complete.** Reusable AWS modules (VPC/EKS/ECR) deploy to isolated `dev`/`staging`/`prod` states. See [docs/PHASES.md](./docs/PHASES.md) for what's next.
 
 ## License
 

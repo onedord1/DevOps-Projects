@@ -28,5 +28,6 @@ Each ADR follows the lightweight [Michael Nygard format](https://cognitect.com/b
 | [0005](./0005-gateway-api-envoy-gateway.md) | Use Gateway API (Envoy Gateway) instead of ingress-nginx | Accepted |
 | [0006](./0006-authentication-eddsa-jwt.md) | Authentication with EdDSA (Ed25519) JWTs | Accepted |
 | [0007](./0007-messaging-nats-jetstream.md) | Event messaging with NATS JetStream | Accepted |
+| [0008](./0008-terraform-structure.md) | Terraform repository structure (modules + environments) | Accepted |
 
 ¹ ADR-0004's ingress-nginx decision is superseded by ADR-0005; its k3s/registry/kubeconfig decisions still stand.

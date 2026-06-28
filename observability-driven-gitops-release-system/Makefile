@@ -103,9 +103,29 @@ compose-up: ## apps: run the full stack locally via docker compose (NATS + servi
 compose-down: ## apps: stop the local docker compose stack
 	@docker compose -f "$(REPO_ROOT)/apps/deploy/docker-compose.yaml" down
 
+# =============================================================================
+#  Phase 4 — Infrastructure as Code (Terraform)
+# =============================================================================
+ENV     ?= dev
+INFRA   := $(REPO_ROOT)/infra
+ENV_DIR  = $(INFRA)/environments/$(ENV)
+
+.PHONY: tf-fmt
+tf-fmt: ## infra: check Terraform formatting across infra/
+	@terraform fmt -check -recursive "$(INFRA)" && echo "terraform fmt: clean"
+
+.PHONY: tf-validate
+tf-validate: ## infra: validate an environment (ENV=dev|staging|prod), no credentials needed
+	@test -d "$(ENV_DIR)" || { printf '\033[31munknown ENV=%s\033[0m\n' "$(ENV)"; exit 1; }
+	@cd "$(ENV_DIR)" && terraform init -backend=false -input=false >/dev/null && terraform validate
+
 .PHONY: tf-plan
-tf-plan: ## infra: terraform plan for dev environment (phase 4)
-	@$(call coming_soon,4,Infrastructure as Code)
+tf-plan: ## infra: terraform plan for an environment (ENV=dev|staging|prod); needs creds + backend
+	@cd "$(ENV_DIR)" && terraform plan -var-file=$(ENV).tfvars
+
+.PHONY: tf-apply
+tf-apply: ## infra: terraform apply for an environment (ENV=...); needs creds + backend
+	@cd "$(ENV_DIR)" && terraform apply -var-file=$(ENV).tfvars
 
 .PHONY: observability
 observability: ## obs: install Prometheus/Grafana/Loki/OTel stack (phase 5)

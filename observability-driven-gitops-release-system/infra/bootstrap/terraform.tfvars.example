@@ -1,0 +1,3 @@
+region            = "us-east-1"
+state_bucket_name = "acme-platform-tfstate-123456789012" # must be globally unique
+lock_table_name   = "acme-platform-tflock"
