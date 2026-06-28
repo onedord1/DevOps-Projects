@@ -1,0 +1,42 @@
+# Sloth SLO: order — checkout (order) availability + business SLO.
+version: "prometheus/v1"
+service: "order"
+labels:
+  owner: platform
+  tier: "1"
+slos:
+- name: "requests-availability"
+  description: "99.5% of order service requests succeed over 30 days."
+  objective: 99.5
+  sli:
+    events:
+      error_query: |
+        sum(rate(http_requests_total{service="order",code=~"5.."}[{{.window}}]))
+      total_query: |
+        sum(rate(http_requests_total{service="order"}[{{.window}}]))
+  alerting:
+    name: OrderAvailabilitySLO
+    page_alert:
+      labels:
+        severity: critical
+    ticket_alert:
+      labels:
+        severity: warning
+
+- name: "checkout-success"
+  description: "99% of checkout attempts succeed over a 30-day window."
+  objective: 99.0
+  sli:
+    events:
+      error_query: |
+        sum(rate(orders_total{result!="success"}[{{.window}}]))
+      total_query: |
+        sum(rate(orders_total[{{.window}}]))
+  alerting:
+    name: CheckoutSuccessSLO
+    page_alert:
+      labels:
+        severity: critical
+    ticket_alert:
+      labels:
+        severity: warning

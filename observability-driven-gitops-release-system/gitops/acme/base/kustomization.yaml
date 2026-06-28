@@ -11,6 +11,8 @@ resources:
 - order.yaml
 - inventory.yaml
 - notification.yaml
+- incident.yaml
+- notifications.yaml
 - analysis/http-success-rate.yaml
 - analysis/http-5xx-rate.yaml
 - analysis/p95-latency.yaml

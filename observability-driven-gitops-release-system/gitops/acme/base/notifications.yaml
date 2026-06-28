@@ -1,0 +1,146 @@
+# Argo Rollouts notification wiring — Phase 9 (SLOs, Incidents & Reporting)
+#
+# Configures two notification services on Argo Rollouts v1.9.0:
+#   1. webhook.incident  → POST http://incident.acme.svc:8080/rollout
+#                          Body matches the rolloutPayload struct in
+#                          apps/services/incident/main.go (event / rollout /
+#                          namespace / revision / message).
+#   2. grafana.dashboard → emit a deploy annotation to Grafana on every
+#                          completed rollout so dashboards show deployment
+#                          markers correlated with metric changes.
+#
+# Triggers and templates are defined here; Rollout resources in
+# frontend/payment/order/inventory.yaml carry the subscribe annotations that
+# connect them to these services.
+#
+# References:
+#   https://argoproj.github.io/argo-rollouts/features/notifications/
+#   https://argoproj-labs.github.io/notifications-engine/services/webhook/
+#   https://argoproj-labs.github.io/notifications-engine/services/grafana/
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: argo-rollouts-notification-cm
+  namespace: argo-rollouts
+  labels:
+    app.kubernetes.io/part-of: acme-platform
+data:
+  # --------------------------------------------------------------------------
+  # Triggers
+  # --------------------------------------------------------------------------
+
+  # Fires when a Rollout enters the Degraded phase after an analysis failure or
+  # explicit abort — i.e. the automatic rollback has been triggered.
+  trigger.on-rollout-aborted: |
+    - send: [rollout-aborted]
+      when: rollout.status.phase == "Degraded"
+
+  # Fires when a Rollout reaches the Healthy phase (100% promoted, stable).
+  trigger.on-rollout-completed: |
+    - send: [rollout-completed]
+      when: rollout.status.phase == "Healthy"
+
+  # --------------------------------------------------------------------------
+  # Message templates — incident webhook
+  # --------------------------------------------------------------------------
+
+  # Matches the rolloutPayload struct in apps/services/incident/main.go:
+  #   Event     string  (aborted | completed)
+  #   Rollout   string
+  #   Namespace string
+  #   Revision  string
+  #   Message   string
+  template.rollout-aborted: |
+    webhook:
+      incident:
+        method: POST
+        path: /rollout
+        body: |
+          {
+            "event":     "aborted",
+            "rollout":   "{{.rollout.metadata.name}}",
+            "namespace": "{{.rollout.metadata.namespace}}",
+            "revision":  "{{.rollout.status.currentPodHash}}",
+            "message":   "Canary analysis failed — automatic rollback to stable revision initiated."
+          }
+
+  template.rollout-completed: |
+    webhook:
+      incident:
+        method: POST
+        path: /rollout
+        body: |
+          {
+            "event":     "completed",
+            "rollout":   "{{.rollout.metadata.name}}",
+            "namespace": "{{.rollout.metadata.namespace}}",
+            "revision":  "{{.rollout.status.currentPodHash}}",
+            "message":   "Rollout promoted to 100%% — all canary analysis passed."
+          }
+
+  # --------------------------------------------------------------------------
+  # Message templates — Grafana deploy annotation
+  # --------------------------------------------------------------------------
+
+  # Annotates the Grafana "Deployments" annotation channel on every completed
+  # (promoted) rollout so dashboard graphs show vertical markers aligned with
+  # deployment events.  Both aborted and completed rollouts get an annotation
+  # so operators can correlate metric changes with their exact deploy event.
+  template.grafana-deploy-annotation: |
+    grafana:
+      dashboard:
+        annotations:
+          tags:
+          - "deployment"
+          - "{{.rollout.metadata.name}}"
+          title: "Deploy: {{.rollout.metadata.name}} {{.rollout.status.currentPodHash}}"
+          text: "Argo Rollouts: canary promoted to 100%% in namespace {{.rollout.metadata.namespace}}"
+
+  template.grafana-abort-annotation: |
+    grafana:
+      dashboard:
+        annotations:
+          tags:
+          - "incident"
+          - "rollback"
+          - "{{.rollout.metadata.name}}"
+          title: "Rollback: {{.rollout.metadata.name}} {{.rollout.status.currentPodHash}}"
+          text: "Argo Rollouts: canary aborted in namespace {{.rollout.metadata.namespace}} — rollback to stable"
+
+  # --------------------------------------------------------------------------
+  # Notification services
+  # --------------------------------------------------------------------------
+
+  # Incident webhook service — internal ClusterIP, no auth required.
+  service.webhook.incident: |
+    url: http://incident.acme.svc:8080
+    headers:
+    - name: Content-Type
+      value: application/json
+
+  # Grafana annotation service — uses Grafana SA token from the Secret below.
+  # $grafana-token is resolved from argo-rollouts-notification-secret.
+  service.grafana.dashboard: |
+    apiUrl: http://kube-prometheus-stack-grafana.monitoring.svc/api
+    apiKey: $grafana-token
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: argo-rollouts-notification-secret
+  namespace: argo-rollouts
+  labels:
+    app.kubernetes.io/part-of: acme-platform
+  annotations:
+    # Override grafana-token with a real Grafana Service Account token.
+    # Create one at: Grafana → Administration → Service Accounts → Add token
+    # Then: kubectl -n argo-rollouts create secret generic \
+    #         argo-rollouts-notification-secret \
+    #         --from-literal=grafana-token=<your-token> --dry-run=client -o yaml | kubectl apply -f -
+type: Opaque
+stringData:
+  # Placeholder — replace with a real Grafana Service Account token that has
+  # Editor or Admin role in your Grafana instance before using the grafana
+  # notification service in a live cluster.
+  grafana-token: "REPLACE_ME_WITH_GRAFANA_SA_TOKEN"

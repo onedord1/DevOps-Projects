@@ -25,3 +25,6 @@ images:
 - name: acme/notification
   newName: localhost:5000/acme/notification
   newTag: dev
+- name: acme/incident
+  newName: localhost:5000/acme/incident
+  newTag: dev

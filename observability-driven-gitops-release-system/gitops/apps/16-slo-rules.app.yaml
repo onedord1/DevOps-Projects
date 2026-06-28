@@ -1,0 +1,37 @@
+# SLO PrometheusRules (sync-wave -3): applies the Sloth-generated multi-window
+# burn-rate recording + alerting rules for all Acme services.
+#
+# Wave -3 runs after kube-prometheus-stack (wave -25) has installed the
+# PrometheusRule CRD, and before the Acme workloads (wave 0).
+#
+# Source directory: slos/generated/
+#   frontend.prometheusrule.yaml
+#   payment.prometheusrule.yaml
+#   (order + inventory rules added when generated)
+#
+# Regenerate with: make slo-generate
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: slo-rules
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "-3"
+  finalizers:
+  - resources-finalizer.argocd.argoproj.io
+spec:
+  project: platform
+  source:
+    repoURL: "https://github.com/onedord1/DevOps-Projects.git"
+    targetRevision: "HEAD"
+    path: observability-driven-gitops-release-system/slos/generated
+    directory:
+      recurse: false
+      include: "*.yaml"
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: monitoring
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true

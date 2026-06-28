@@ -1,0 +1,50 @@
+# Sloth SLO: frontend (BFF) — HTTP availability + latency.
+# Sloth generates the full multi-window multi-burn-rate (MWMBR) recording rules
+# and alerting rules from this compact declaration.
+#
+# Generate (once sloth binary is available):
+#   sloth generate -i slos/sloth/ -o slos/generated/
+# or the Kubernetes CR mode (see slos/README.md).
+version: "prometheus/v1"
+service: "frontend"
+labels:
+  owner: platform
+  tier: "1"
+slos:
+  - name: "requests-availability"
+    description: "99.9% of storefront HTTP requests succeed (non-5xx) over a 30-day window."
+    objective: 99.9
+    sli:
+      events:
+        error_query: |
+          sum(rate(http_requests_total{service="frontend",code=~"5.."}[{{.window}}]))
+        total_query: |
+          sum(rate(http_requests_total{service="frontend"}[{{.window}}]))
+    alerting:
+      name: FrontendAvailabilitySLO
+      page_alert:
+        labels:
+          severity: critical
+          team: platform
+      ticket_alert:
+        labels:
+          severity: warning
+          team: platform
+
+  - name: "requests-latency"
+    description: "99% of storefront requests complete within 500ms over a 30-day window."
+    objective: 99.0
+    sli:
+      events:
+        error_query: |
+          sum(rate(http_request_duration_seconds_bucket{service="frontend",le="0.5"}[{{.window}}]))
+        total_query: |
+          sum(rate(http_request_duration_seconds_bucket{service="frontend",le="+Inf"}[{{.window}}]))
+    alerting:
+      name: FrontendLatencySLO
+      page_alert:
+        labels:
+          severity: critical
+      ticket_alert:
+        labels:
+          severity: warning

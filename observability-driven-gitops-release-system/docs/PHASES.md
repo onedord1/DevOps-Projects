@@ -22,7 +22,7 @@ This platform is built **incrementally**. Each phase is self-contained, validate
 | 6 | GitOps with Argo CD | ✅ | Argo CD app-of-apps managing observability + Acme (Kustomize), sync-wave ordered |
 | 7 | Progressive Delivery | ✅ | Argo Rollouts canary (5→20→50→100%) + 8 reusable AnalysisTemplates, auto promote/rollback |
 | 8 | CI/CD & DevSecOps | ✅ | GitLab CI: Buildah build → Trivy gate → Syft SBOM → Cosign keyless sign → GitOps bump |
-| 9 | SLOs, Incidents & Reporting | ⬜ | Error budgets, incident automation, deploy reports |
+| 9 | SLOs, Incidents & Reporting | ✅ | Error budgets, incident automation, deploy reports |
 | 10 | Demos, Faults & Hardening | ⬜ | Fault injection, demo scripts, troubleshooting polish |
 
 ---
@@ -147,6 +147,29 @@ GitLab CI pipeline: build → Trivy scan → Syft SBOM → Cosign sign → push 
 7. **Demo** — Set the CI config path + `GITOPS_PUSH_TOKEN`; push/MR runs build→scan→sbom→sign; run `release` to ship; verify with `ci/scripts/verify-signature.sh`.
 8. **Git commits** — `feat(ci): GitLab DevSecOps pipeline — build/scan/sbom/sign/release (phase 8)`.
 9. **README updates** — `ci/README.md` guide; status set to "Phase 8 complete".
+
+### Phase 9 — SLOs, Incidents & Reporting ✅
+
+1. **Objective** — Encode error budgets as code, close the rollback→incident loop automatically, annotate dashboards on every deploy, and expose a scriptable deploy health report.
+2. **Architecture** — Sloth v0.16.0 generates MWMBR PrometheusRules from compact SLO declarations; a Go incident webhook receives Alertmanager + Argo Rollouts events and emits incident metrics; Argo Rollouts built-in notification services fire to the webhook and to Grafana (deploy annotations); a shell report script queries Prometheus + the incident API. See [slos/README.md](../slos/README.md).
+3. **Design decisions** — [ADR-0013](./adr/0013-slos-incidents-reporting.md): Sloth over manual PromQL; incident webhook over paging-only for queryable state; deploy annotations to close the observability timeline; error-budget math in recording rules (not ad-hoc queries).
+4. **Files** — `slos/sloth/*.slo.yaml` (4 services), `slos/generated/{frontend,payment}.prometheusrule.yaml`, `slos/generate.sh`, `slos/deploy-report.sh`, `slos/README.md`, `gitops/acme/base/incident.yaml`, `gitops/acme/base/notifications.yaml`, `gitops/apps/16-slo-rules.app.yaml`, `docs/adr/0013-slos-incidents-reporting.md`, Makefile `slo-generate`/`deploy-report` targets.
+5. **Checklist:**
+   - [x] Sloth SLO definitions for all 4 services (`slos/sloth/`)
+   - [x] Generated MWMBR PrometheusRules for frontend + payment (`slos/generated/`)
+   - [x] `slos/generate.sh` — sloth wrapper + YAML validation
+   - [x] Argo Rollouts notification ConfigMap + Secret (`gitops/acme/base/notifications.yaml`)
+   - [x] Subscribe annotations on all 4 Rollout resources
+   - [x] Incident service Kubernetes manifest (`gitops/acme/base/incident.yaml`)
+   - [x] `kustomization.yaml` updated with incident.yaml + notifications.yaml
+   - [x] `gitops/apps/16-slo-rules.app.yaml` — Argo CD Application, sync-wave −3
+   - [x] `slos/deploy-report.sh` — Prometheus + incident API report with optional JSON output
+   - [x] ADR-0013 documenting all design choices
+   - [x] `slos/README.md` — in-depth guide with Mermaid incident flow diagram
+6. **Validation** — `go build ./services/incident` clean; `go vet ./...` clean; `make lint-scripts` passes bash -n on all new scripts; `kubectl kustomize gitops/acme/overlays/dev` builds; all YAML parses; `make ci-validate` still passes.
+7. **Demo** — `make slo-generate` (with sloth installed) → `make deploy-report` (with port-forwards) → inspect open incidents in Grafana.
+8. **Git commits** — `feat(slos): SLO-as-code, incident webhook, deploy reports + Rollout notifications (phase 9)`.
+9. **README updates** — `slos/README.md` guide; `README.md` status set to "Phase 9 complete"; `docs/PHASES.md` checklist.
 
 ### Phase 9 — SLOs, Incidents & Reporting ⬜
 

@@ -6,6 +6,12 @@ metadata:
   name: inventory
   labels:
     app.kubernetes.io/name: inventory
+  annotations:
+    # Phase 9: subscribe to Rollout notifications → incident service + Grafana
+    notifications.argoproj.io/subscribe.on-rollout-aborted.incident: ""
+    notifications.argoproj.io/subscribe.on-rollout-completed.incident: ""
+    notifications.argoproj.io/subscribe.on-rollout-aborted.dashboard: ""
+    notifications.argoproj.io/subscribe.on-rollout-completed.dashboard: ""
 spec:
   replicas: 3
   revisionHistoryLimit: 3

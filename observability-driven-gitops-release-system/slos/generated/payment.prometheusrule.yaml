@@ -1,0 +1,425 @@
+# Generated SLO PrometheusRule — payment service
+# Simulates what `sloth generate` produces from slos/sloth/payment.slo.yaml
+# using the Sloth v0.16.0 multi-window multi-burn-rate (MWMBR) algorithm.
+#
+# DO NOT EDIT manually — regenerate with: make slo-generate
+# or: sloth generate -i slos/sloth/ -o slos/generated/
+#
+# SLOs covered:
+#   payment-requests-availability  objective: 99.5%   (30-day window)
+#   payment-payment-success        objective: 99.0%   (30-day window)
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: sloth-slo-payment
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/part-of: acme-platform
+    release: kube-prometheus-stack
+    sloth_service: payment
+    sloth_version: v0.16.0
+    sloth_mode: "info-only"
+spec:
+  groups:
+
+  # ---------------------------------------------------------------------------
+  # SLO: payment-requests-availability (99.5% availability)
+  # ---------------------------------------------------------------------------
+  - name: sloth-slo-payment-requests-availability-windows
+    interval: 30s
+    rules:
+    - record: slo:sli_error:ratio_rate5m
+      expr: |
+        (
+          sum(rate(http_requests_total{service="payment",code=~"5.."}[5m]))
+          /
+          clamp_min(sum(rate(http_requests_total{service="payment"}[5m])), 1e-9)
+        )
+      labels:
+        sloth_service: payment
+        sloth_slo: requests-availability
+        sloth_id: "payment-requests-availability"
+
+    - record: slo:sli_error:ratio_rate30m
+      expr: |
+        (
+          sum(rate(http_requests_total{service="payment",code=~"5.."}[30m]))
+          /
+          clamp_min(sum(rate(http_requests_total{service="payment"}[30m])), 1e-9)
+        )
+      labels:
+        sloth_service: payment
+        sloth_slo: requests-availability
+        sloth_id: "payment-requests-availability"
+
+    - record: slo:sli_error:ratio_rate1h
+      expr: |
+        (
+          sum(rate(http_requests_total{service="payment",code=~"5.."}[1h]))
+          /
+          clamp_min(sum(rate(http_requests_total{service="payment"}[1h])), 1e-9)
+        )
+      labels:
+        sloth_service: payment
+        sloth_slo: requests-availability
+        sloth_id: "payment-requests-availability"
+
+    - record: slo:sli_error:ratio_rate2h
+      expr: |
+        (
+          sum(rate(http_requests_total{service="payment",code=~"5.."}[2h]))
+          /
+          clamp_min(sum(rate(http_requests_total{service="payment"}[2h])), 1e-9)
+        )
+      labels:
+        sloth_service: payment
+        sloth_slo: requests-availability
+        sloth_id: "payment-requests-availability"
+
+    - record: slo:sli_error:ratio_rate6h
+      expr: |
+        (
+          sum(rate(http_requests_total{service="payment",code=~"5.."}[6h]))
+          /
+          clamp_min(sum(rate(http_requests_total{service="payment"}[6h])), 1e-9)
+        )
+      labels:
+        sloth_service: payment
+        sloth_slo: requests-availability
+        sloth_id: "payment-requests-availability"
+
+    - record: slo:sli_error:ratio_rate1d
+      expr: |
+        (
+          sum(rate(http_requests_total{service="payment",code=~"5.."}[1d]))
+          /
+          clamp_min(sum(rate(http_requests_total{service="payment"}[1d])), 1e-9)
+        )
+      labels:
+        sloth_service: payment
+        sloth_slo: requests-availability
+        sloth_id: "payment-requests-availability"
+
+    - record: slo:sli_error:ratio_rate3d
+      expr: |
+        (
+          sum(rate(http_requests_total{service="payment",code=~"5.."}[3d]))
+          /
+          clamp_min(sum(rate(http_requests_total{service="payment"}[3d])), 1e-9)
+        )
+      labels:
+        sloth_service: payment
+        sloth_slo: requests-availability
+        sloth_id: "payment-requests-availability"
+
+    - record: slo:sli_error:ratio_rate30d
+      expr: |
+        (
+          sum(rate(http_requests_total{service="payment",code=~"5.."}[30d]))
+          /
+          clamp_min(sum(rate(http_requests_total{service="payment"}[30d])), 1e-9)
+        )
+      labels:
+        sloth_service: payment
+        sloth_slo: requests-availability
+        sloth_id: "payment-requests-availability"
+
+    - record: slo:objective:ratio
+      expr: "vector(0.995)"
+      labels:
+        sloth_service: payment
+        sloth_slo: requests-availability
+        sloth_id: "payment-requests-availability"
+
+    - record: slo:error_budget:ratio
+      expr: "vector(1 - 0.995)"
+      labels:
+        sloth_service: payment
+        sloth_slo: requests-availability
+        sloth_id: "payment-requests-availability"
+
+    - record: slo:time_period:days
+      expr: "vector(30)"
+      labels:
+        sloth_service: payment
+        sloth_slo: requests-availability
+        sloth_id: "payment-requests-availability"
+
+    - record: slo:current_burn_rate:ratio
+      expr: |
+        slo:sli_error:ratio_rate5m{sloth_id="payment-requests-availability"}
+        / on(sloth_id) group_left
+        slo:error_budget:ratio{sloth_id="payment-requests-availability"}
+      labels:
+        sloth_service: payment
+        sloth_slo: requests-availability
+        sloth_id: "payment-requests-availability"
+
+    - record: slo:period_burn_rate:ratio
+      expr: |
+        slo:sli_error:ratio_rate30d{sloth_id="payment-requests-availability"}
+        / on(sloth_id) group_left
+        slo:error_budget:ratio{sloth_id="payment-requests-availability"}
+      labels:
+        sloth_service: payment
+        sloth_slo: requests-availability
+        sloth_id: "payment-requests-availability"
+
+    - record: slo:period_error_budget_remaining:ratio
+      expr: |
+        1 - slo:period_burn_rate:ratio{sloth_id="payment-requests-availability"}
+      labels:
+        sloth_service: payment
+        sloth_slo: requests-availability
+        sloth_id: "payment-requests-availability"
+
+  - name: sloth-slo-payment-requests-availability-alerts
+    rules:
+    - alert: PaymentAvailabilitySLOFastBurnPage
+      expr: |
+        (
+          slo:sli_error:ratio_rate1h{sloth_id="payment-requests-availability"}
+          > (14.4 * (1 - 0.995))
+        )
+        and
+        (
+          slo:sli_error:ratio_rate5m{sloth_id="payment-requests-availability"}
+          > (14.4 * (1 - 0.995))
+        )
+      for: 2m
+      labels:
+        severity: critical
+        team: payments
+        sloth_service: payment
+        sloth_slo: requests-availability
+        sloth_severity: page
+      annotations:
+        summary: "Payment availability SLO fast burn (critical page)"
+        description: >
+          The payment service is burning its availability error budget at >14.4× the allowed rate over both the 1h and 5m windows. At this rate the entire 30-day budget will be exhausted in ~50 minutes. Current 1h error ratio: {{ $value | humanizePercentage }}.
+        runbook_url: "https://github.com/acme-commerce/platform/blob/main/docs/runbooks/payment-slo.md"
+
+    - alert: PaymentAvailabilitySLOSlowBurnTicket
+      expr: |
+        (
+          slo:sli_error:ratio_rate6h{sloth_id="payment-requests-availability"}
+          > (6 * (1 - 0.995))
+        )
+        and
+        (
+          slo:sli_error:ratio_rate30m{sloth_id="payment-requests-availability"}
+          > (6 * (1 - 0.995))
+        )
+      for: 15m
+      labels:
+        severity: warning
+        team: payments
+        sloth_service: payment
+        sloth_slo: requests-availability
+        sloth_severity: ticket
+      annotations:
+        summary: "Payment availability SLO slow burn (warning ticket)"
+        description: >
+          The payment service is slowly burning its availability error budget at >6× the allowed rate over the 6h and 30m windows. Current 6h error ratio: {{ $value | humanizePercentage }}.
+        runbook_url: "https://github.com/acme-commerce/platform/blob/main/docs/runbooks/payment-slo.md"
+
+  # ---------------------------------------------------------------------------
+  # SLO: payment-payment-success (99.0% of payment authorizations succeed)
+  # ---------------------------------------------------------------------------
+  - name: sloth-slo-payment-payment-success-windows
+    interval: 30s
+    rules:
+    - record: slo:sli_error:ratio_rate5m
+      expr: |
+        (
+          sum(rate(payments_total{result!="success"}[5m]))
+          /
+          clamp_min(sum(rate(payments_total[5m])), 1e-9)
+        )
+      labels:
+        sloth_service: payment
+        sloth_slo: payment-success
+        sloth_id: "payment-payment-success"
+
+    - record: slo:sli_error:ratio_rate30m
+      expr: |
+        (
+          sum(rate(payments_total{result!="success"}[30m]))
+          /
+          clamp_min(sum(rate(payments_total[30m])), 1e-9)
+        )
+      labels:
+        sloth_service: payment
+        sloth_slo: payment-success
+        sloth_id: "payment-payment-success"
+
+    - record: slo:sli_error:ratio_rate1h
+      expr: |
+        (
+          sum(rate(payments_total{result!="success"}[1h]))
+          /
+          clamp_min(sum(rate(payments_total[1h])), 1e-9)
+        )
+      labels:
+        sloth_service: payment
+        sloth_slo: payment-success
+        sloth_id: "payment-payment-success"
+
+    - record: slo:sli_error:ratio_rate2h
+      expr: |
+        (
+          sum(rate(payments_total{result!="success"}[2h]))
+          /
+          clamp_min(sum(rate(payments_total[2h])), 1e-9)
+        )
+      labels:
+        sloth_service: payment
+        sloth_slo: payment-success
+        sloth_id: "payment-payment-success"
+
+    - record: slo:sli_error:ratio_rate6h
+      expr: |
+        (
+          sum(rate(payments_total{result!="success"}[6h]))
+          /
+          clamp_min(sum(rate(payments_total[6h])), 1e-9)
+        )
+      labels:
+        sloth_service: payment
+        sloth_slo: payment-success
+        sloth_id: "payment-payment-success"
+
+    - record: slo:sli_error:ratio_rate1d
+      expr: |
+        (
+          sum(rate(payments_total{result!="success"}[1d]))
+          /
+          clamp_min(sum(rate(payments_total[1d])), 1e-9)
+        )
+      labels:
+        sloth_service: payment
+        sloth_slo: payment-success
+        sloth_id: "payment-payment-success"
+
+    - record: slo:sli_error:ratio_rate3d
+      expr: |
+        (
+          sum(rate(payments_total{result!="success"}[3d]))
+          /
+          clamp_min(sum(rate(payments_total[3d])), 1e-9)
+        )
+      labels:
+        sloth_service: payment
+        sloth_slo: payment-success
+        sloth_id: "payment-payment-success"
+
+    - record: slo:sli_error:ratio_rate30d
+      expr: |
+        (
+          sum(rate(payments_total{result!="success"}[30d]))
+          /
+          clamp_min(sum(rate(payments_total[30d])), 1e-9)
+        )
+      labels:
+        sloth_service: payment
+        sloth_slo: payment-success
+        sloth_id: "payment-payment-success"
+
+    - record: slo:objective:ratio
+      expr: "vector(0.990)"
+      labels:
+        sloth_service: payment
+        sloth_slo: payment-success
+        sloth_id: "payment-payment-success"
+
+    - record: slo:error_budget:ratio
+      expr: "vector(1 - 0.990)"
+      labels:
+        sloth_service: payment
+        sloth_slo: payment-success
+        sloth_id: "payment-payment-success"
+
+    - record: slo:time_period:days
+      expr: "vector(30)"
+      labels:
+        sloth_service: payment
+        sloth_slo: payment-success
+        sloth_id: "payment-payment-success"
+
+    - record: slo:current_burn_rate:ratio
+      expr: |
+        slo:sli_error:ratio_rate5m{sloth_id="payment-payment-success"}
+        / on(sloth_id) group_left
+        slo:error_budget:ratio{sloth_id="payment-payment-success"}
+      labels:
+        sloth_service: payment
+        sloth_slo: payment-success
+        sloth_id: "payment-payment-success"
+
+    - record: slo:period_burn_rate:ratio
+      expr: |
+        slo:sli_error:ratio_rate30d{sloth_id="payment-payment-success"}
+        / on(sloth_id) group_left
+        slo:error_budget:ratio{sloth_id="payment-payment-success"}
+      labels:
+        sloth_service: payment
+        sloth_slo: payment-success
+        sloth_id: "payment-payment-success"
+
+    - record: slo:period_error_budget_remaining:ratio
+      expr: |
+        1 - slo:period_burn_rate:ratio{sloth_id="payment-payment-success"}
+      labels:
+        sloth_service: payment
+        sloth_slo: payment-success
+        sloth_id: "payment-payment-success"
+
+  - name: sloth-slo-payment-payment-success-alerts
+    rules:
+    - alert: PaymentSuccessSLOFastBurnPage
+      expr: |
+        (
+          slo:sli_error:ratio_rate1h{sloth_id="payment-payment-success"}
+          > (14.4 * (1 - 0.990))
+        )
+        and
+        (
+          slo:sli_error:ratio_rate5m{sloth_id="payment-payment-success"}
+          > (14.4 * (1 - 0.990))
+        )
+      for: 2m
+      labels:
+        severity: critical
+        team: payments
+        sloth_service: payment
+        sloth_slo: payment-success
+        sloth_severity: page
+      annotations:
+        summary: "Payment success SLO fast burn (critical page)"
+        description: >
+          The payment-success SLO is burning at >14.4× over both 1h and 5m windows. More than 14.4% of payment authorizations are failing. Current 1h error ratio: {{ $value | humanizePercentage }}.
+        runbook_url: "https://github.com/acme-commerce/platform/blob/main/docs/runbooks/payment-slo.md"
+
+    - alert: PaymentSuccessSLOSlowBurnTicket
+      expr: |
+        (
+          slo:sli_error:ratio_rate6h{sloth_id="payment-payment-success"}
+          > (6 * (1 - 0.990))
+        )
+        and
+        (
+          slo:sli_error:ratio_rate30m{sloth_id="payment-payment-success"}
+          > (6 * (1 - 0.990))
+        )
+      for: 15m
+      labels:
+        severity: warning
+        team: payments
+        sloth_service: payment
+        sloth_slo: payment-success
+        sloth_severity: ticket
+      annotations:
+        summary: "Payment success SLO slow burn (warning ticket)"
+        description: >
+          The payment-success SLO is slowly burning at >6× over the 6h and 30m windows. Payment decline rate is elevated. Current 6h error ratio: {{ $value | humanizePercentage }}.
+        runbook_url: "https://github.com/acme-commerce/platform/blob/main/docs/runbooks/payment-slo.md"

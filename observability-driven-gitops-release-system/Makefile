@@ -158,6 +158,17 @@ rollouts-demo: ## delivery: show the progressive-delivery demo commands
 ci-validate: ## ci: validate the GitLab pipeline YAML + release tag-bump logic
 	@bash "$(REPO_ROOT)/ci/validate.sh"
 
+# =============================================================================
+#  Phase 9 — SLOs, Incidents & Reporting
+# =============================================================================
+.PHONY: slo-generate
+slo-generate: ## slos: generate Prometheus SLO rules from Sloth definitions in slos/sloth/
+	@bash "$(REPO_ROOT)/slos/generate.sh"
+
+.PHONY: deploy-report
+deploy-report: ## slos: print a deployment health report (SLIs + incidents, last 24h)
+	@bash "$(REPO_ROOT)/slos/deploy-report.sh"
+
 .PHONY: demo
 demo: ## demo: run guided end-to-end demo (phase 10)
 	@$(call coming_soon,10,Demos and fault injection)

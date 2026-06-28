@@ -1,0 +1,432 @@
+# Generated SLO PrometheusRule — frontend service
+# Simulates what `sloth generate` produces from slos/sloth/frontend.slo.yaml
+# using the Sloth v0.16.0 multi-window multi-burn-rate (MWMBR) algorithm.
+#
+# DO NOT EDIT manually — regenerate with: make slo-generate
+# or: sloth generate -i slos/sloth/ -o slos/generated/
+#
+# SLOs covered:
+#   frontend-requests-availability  objective: 99.9%  (30-day window)
+#   frontend-requests-latency       objective: 99.0%  (30-day window)
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: sloth-slo-frontend
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/part-of: acme-platform
+    release: kube-prometheus-stack
+    sloth_service: frontend
+    sloth_version: v0.16.0
+    sloth_mode: "info-only"
+spec:
+  groups:
+
+  # ---------------------------------------------------------------------------
+  # SLO: frontend-requests-availability (99.9% availability)
+  # ---------------------------------------------------------------------------
+  - name: sloth-slo-frontend-requests-availability-windows
+    interval: 30s
+    rules:
+    # -- SLI error ratio recording rules (one per evaluation window) ----------
+    - record: slo:sli_error:ratio_rate5m
+      expr: |
+        (
+          sum(rate(http_requests_total{service="frontend",code=~"5.."}[5m]))
+          /
+          clamp_min(sum(rate(http_requests_total{service="frontend"}[5m])), 1e-9)
+        )
+      labels:
+        sloth_service: frontend
+        sloth_slo: requests-availability
+        sloth_id: "frontend-requests-availability"
+
+    - record: slo:sli_error:ratio_rate30m
+      expr: |
+        (
+          sum(rate(http_requests_total{service="frontend",code=~"5.."}[30m]))
+          /
+          clamp_min(sum(rate(http_requests_total{service="frontend"}[30m])), 1e-9)
+        )
+      labels:
+        sloth_service: frontend
+        sloth_slo: requests-availability
+        sloth_id: "frontend-requests-availability"
+
+    - record: slo:sli_error:ratio_rate1h
+      expr: |
+        (
+          sum(rate(http_requests_total{service="frontend",code=~"5.."}[1h]))
+          /
+          clamp_min(sum(rate(http_requests_total{service="frontend"}[1h])), 1e-9)
+        )
+      labels:
+        sloth_service: frontend
+        sloth_slo: requests-availability
+        sloth_id: "frontend-requests-availability"
+
+    - record: slo:sli_error:ratio_rate2h
+      expr: |
+        (
+          sum(rate(http_requests_total{service="frontend",code=~"5.."}[2h]))
+          /
+          clamp_min(sum(rate(http_requests_total{service="frontend"}[2h])), 1e-9)
+        )
+      labels:
+        sloth_service: frontend
+        sloth_slo: requests-availability
+        sloth_id: "frontend-requests-availability"
+
+    - record: slo:sli_error:ratio_rate6h
+      expr: |
+        (
+          sum(rate(http_requests_total{service="frontend",code=~"5.."}[6h]))
+          /
+          clamp_min(sum(rate(http_requests_total{service="frontend"}[6h])), 1e-9)
+        )
+      labels:
+        sloth_service: frontend
+        sloth_slo: requests-availability
+        sloth_id: "frontend-requests-availability"
+
+    - record: slo:sli_error:ratio_rate1d
+      expr: |
+        (
+          sum(rate(http_requests_total{service="frontend",code=~"5.."}[1d]))
+          /
+          clamp_min(sum(rate(http_requests_total{service="frontend"}[1d])), 1e-9)
+        )
+      labels:
+        sloth_service: frontend
+        sloth_slo: requests-availability
+        sloth_id: "frontend-requests-availability"
+
+    - record: slo:sli_error:ratio_rate3d
+      expr: |
+        (
+          sum(rate(http_requests_total{service="frontend",code=~"5.."}[3d]))
+          /
+          clamp_min(sum(rate(http_requests_total{service="frontend"}[3d])), 1e-9)
+        )
+      labels:
+        sloth_service: frontend
+        sloth_slo: requests-availability
+        sloth_id: "frontend-requests-availability"
+
+    - record: slo:sli_error:ratio_rate30d
+      expr: |
+        (
+          sum(rate(http_requests_total{service="frontend",code=~"5.."}[30d]))
+          /
+          clamp_min(sum(rate(http_requests_total{service="frontend"}[30d])), 1e-9)
+        )
+      labels:
+        sloth_service: frontend
+        sloth_slo: requests-availability
+        sloth_id: "frontend-requests-availability"
+
+    # -- Error-budget burn-rate metadata (objective = 99.9% → budget = 0.1%) -
+    - record: slo:objective:ratio
+      expr: "vector(0.999)"
+      labels:
+        sloth_service: frontend
+        sloth_slo: requests-availability
+        sloth_id: "frontend-requests-availability"
+
+    - record: slo:error_budget:ratio
+      expr: "vector(1 - 0.999)"
+      labels:
+        sloth_service: frontend
+        sloth_slo: requests-availability
+        sloth_id: "frontend-requests-availability"
+
+    - record: slo:time_period:days
+      expr: "vector(30)"
+      labels:
+        sloth_service: frontend
+        sloth_slo: requests-availability
+        sloth_id: "frontend-requests-availability"
+
+    # Current burn rate relative to the error budget
+    - record: slo:current_burn_rate:ratio
+      expr: |
+        slo:sli_error:ratio_rate5m{sloth_id="frontend-requests-availability"}
+        / on(sloth_id) group_left
+        slo:error_budget:ratio{sloth_id="frontend-requests-availability"}
+      labels:
+        sloth_service: frontend
+        sloth_slo: requests-availability
+        sloth_id: "frontend-requests-availability"
+
+    - record: slo:period_burn_rate:ratio
+      expr: |
+        slo:sli_error:ratio_rate30d{sloth_id="frontend-requests-availability"}
+        / on(sloth_id) group_left
+        slo:error_budget:ratio{sloth_id="frontend-requests-availability"}
+      labels:
+        sloth_service: frontend
+        sloth_slo: requests-availability
+        sloth_id: "frontend-requests-availability"
+
+    - record: slo:period_error_budget_remaining:ratio
+      expr: |
+        1 - slo:period_burn_rate:ratio{sloth_id="frontend-requests-availability"}
+      labels:
+        sloth_service: frontend
+        sloth_slo: requests-availability
+        sloth_id: "frontend-requests-availability"
+
+  - name: sloth-slo-frontend-requests-availability-alerts
+    rules:
+    # -- Fast-burn page alert (>14.4x budget over 1h + 5m windows) ————————————
+    # Exhausts 2% of the 30-day budget in under 1 hour.
+    - alert: FrontendAvailabilitySLOFastBurnPage
+      expr: |
+        (
+          slo:sli_error:ratio_rate1h{sloth_id="frontend-requests-availability"}
+          > (14.4 * (1 - 0.999))
+        )
+        and
+        (
+          slo:sli_error:ratio_rate5m{sloth_id="frontend-requests-availability"}
+          > (14.4 * (1 - 0.999))
+        )
+      for: 2m
+      labels:
+        severity: critical
+        team: platform
+        sloth_service: frontend
+        sloth_slo: requests-availability
+        sloth_severity: page
+      annotations:
+        summary: "Frontend availability SLO fast burn (critical page)"
+        description: >
+          The frontend service is burning its availability error budget at >14.4× the allowed rate over both the 1h and 5m windows. At this rate the entire 30-day budget will be exhausted in ~50 minutes. Current 1h error ratio: {{ $value | humanizePercentage }}.
+        runbook_url: "https://github.com/acme-commerce/platform/blob/main/docs/runbooks/frontend-slo.md"
+
+    # -- Slow-burn ticket alert (>6x budget over 6h + 30m windows) ————————————
+    # Exhausts 5% of the 30-day budget in under 6 hours.
+    - alert: FrontendAvailabilitySLOSlowBurnTicket
+      expr: |
+        (
+          slo:sli_error:ratio_rate6h{sloth_id="frontend-requests-availability"}
+          > (6 * (1 - 0.999))
+        )
+        and
+        (
+          slo:sli_error:ratio_rate30m{sloth_id="frontend-requests-availability"}
+          > (6 * (1 - 0.999))
+        )
+      for: 15m
+      labels:
+        severity: warning
+        team: platform
+        sloth_service: frontend
+        sloth_slo: requests-availability
+        sloth_severity: ticket
+      annotations:
+        summary: "Frontend availability SLO slow burn (warning ticket)"
+        description: >
+          The frontend service is burning its availability error budget at >6× the allowed rate over both the 6h and 30m windows. Current 6h error ratio: {{ $value | humanizePercentage }}.
+        runbook_url: "https://github.com/acme-commerce/platform/blob/main/docs/runbooks/frontend-slo.md"
+
+  # ---------------------------------------------------------------------------
+  # SLO: frontend-requests-latency (99.0% of requests under 500ms)
+  # ---------------------------------------------------------------------------
+  - name: sloth-slo-frontend-requests-latency-windows
+    interval: 30s
+    rules:
+    # For latency SLOs the "error" event = requests that VIOLATED the SLO
+    # (i.e. were NOT in the le="0.5" bucket).  Sloth treats total - good = bad.
+    - record: slo:sli_error:ratio_rate5m
+      expr: |
+        1 - (
+          sum(rate(http_request_duration_seconds_bucket{service="frontend",le="0.5"}[5m]))
+          /
+          clamp_min(sum(rate(http_request_duration_seconds_bucket{service="frontend",le="+Inf"}[5m])), 1e-9)
+        )
+      labels:
+        sloth_service: frontend
+        sloth_slo: requests-latency
+        sloth_id: "frontend-requests-latency"
+
+    - record: slo:sli_error:ratio_rate30m
+      expr: |
+        1 - (
+          sum(rate(http_request_duration_seconds_bucket{service="frontend",le="0.5"}[30m]))
+          /
+          clamp_min(sum(rate(http_request_duration_seconds_bucket{service="frontend",le="+Inf"}[30m])), 1e-9)
+        )
+      labels:
+        sloth_service: frontend
+        sloth_slo: requests-latency
+        sloth_id: "frontend-requests-latency"
+
+    - record: slo:sli_error:ratio_rate1h
+      expr: |
+        1 - (
+          sum(rate(http_request_duration_seconds_bucket{service="frontend",le="0.5"}[1h]))
+          /
+          clamp_min(sum(rate(http_request_duration_seconds_bucket{service="frontend",le="+Inf"}[1h])), 1e-9)
+        )
+      labels:
+        sloth_service: frontend
+        sloth_slo: requests-latency
+        sloth_id: "frontend-requests-latency"
+
+    - record: slo:sli_error:ratio_rate2h
+      expr: |
+        1 - (
+          sum(rate(http_request_duration_seconds_bucket{service="frontend",le="0.5"}[2h]))
+          /
+          clamp_min(sum(rate(http_request_duration_seconds_bucket{service="frontend",le="+Inf"}[2h])), 1e-9)
+        )
+      labels:
+        sloth_service: frontend
+        sloth_slo: requests-latency
+        sloth_id: "frontend-requests-latency"
+
+    - record: slo:sli_error:ratio_rate6h
+      expr: |
+        1 - (
+          sum(rate(http_request_duration_seconds_bucket{service="frontend",le="0.5"}[6h]))
+          /
+          clamp_min(sum(rate(http_request_duration_seconds_bucket{service="frontend",le="+Inf"}[6h])), 1e-9)
+        )
+      labels:
+        sloth_service: frontend
+        sloth_slo: requests-latency
+        sloth_id: "frontend-requests-latency"
+
+    - record: slo:sli_error:ratio_rate1d
+      expr: |
+        1 - (
+          sum(rate(http_request_duration_seconds_bucket{service="frontend",le="0.5"}[1d]))
+          /
+          clamp_min(sum(rate(http_request_duration_seconds_bucket{service="frontend",le="+Inf"}[1d])), 1e-9)
+        )
+      labels:
+        sloth_service: frontend
+        sloth_slo: requests-latency
+        sloth_id: "frontend-requests-latency"
+
+    - record: slo:sli_error:ratio_rate3d
+      expr: |
+        1 - (
+          sum(rate(http_request_duration_seconds_bucket{service="frontend",le="0.5"}[3d]))
+          /
+          clamp_min(sum(rate(http_request_duration_seconds_bucket{service="frontend",le="+Inf"}[3d])), 1e-9)
+        )
+      labels:
+        sloth_service: frontend
+        sloth_slo: requests-latency
+        sloth_id: "frontend-requests-latency"
+
+    - record: slo:sli_error:ratio_rate30d
+      expr: |
+        1 - (
+          sum(rate(http_request_duration_seconds_bucket{service="frontend",le="0.5"}[30d]))
+          /
+          clamp_min(sum(rate(http_request_duration_seconds_bucket{service="frontend",le="+Inf"}[30d])), 1e-9)
+        )
+      labels:
+        sloth_service: frontend
+        sloth_slo: requests-latency
+        sloth_id: "frontend-requests-latency"
+
+    - record: slo:objective:ratio
+      expr: "vector(0.990)"
+      labels:
+        sloth_service: frontend
+        sloth_slo: requests-latency
+        sloth_id: "frontend-requests-latency"
+
+    - record: slo:error_budget:ratio
+      expr: "vector(1 - 0.990)"
+      labels:
+        sloth_service: frontend
+        sloth_slo: requests-latency
+        sloth_id: "frontend-requests-latency"
+
+    - record: slo:time_period:days
+      expr: "vector(30)"
+      labels:
+        sloth_service: frontend
+        sloth_slo: requests-latency
+        sloth_id: "frontend-requests-latency"
+
+    - record: slo:current_burn_rate:ratio
+      expr: |
+        slo:sli_error:ratio_rate5m{sloth_id="frontend-requests-latency"}
+        / on(sloth_id) group_left
+        slo:error_budget:ratio{sloth_id="frontend-requests-latency"}
+      labels:
+        sloth_service: frontend
+        sloth_slo: requests-latency
+        sloth_id: "frontend-requests-latency"
+
+    - record: slo:period_burn_rate:ratio
+      expr: |
+        slo:sli_error:ratio_rate30d{sloth_id="frontend-requests-latency"}
+        / on(sloth_id) group_left
+        slo:error_budget:ratio{sloth_id="frontend-requests-latency"}
+      labels:
+        sloth_service: frontend
+        sloth_slo: requests-latency
+        sloth_id: "frontend-requests-latency"
+
+    - record: slo:period_error_budget_remaining:ratio
+      expr: |
+        1 - slo:period_burn_rate:ratio{sloth_id="frontend-requests-latency"}
+      labels:
+        sloth_service: frontend
+        sloth_slo: requests-latency
+        sloth_id: "frontend-requests-latency"
+
+  - name: sloth-slo-frontend-requests-latency-alerts
+    rules:
+    - alert: FrontendLatencySLOFastBurnPage
+      expr: |
+        (
+          slo:sli_error:ratio_rate1h{sloth_id="frontend-requests-latency"}
+          > (14.4 * (1 - 0.990))
+        )
+        and
+        (
+          slo:sli_error:ratio_rate5m{sloth_id="frontend-requests-latency"}
+          > (14.4 * (1 - 0.990))
+        )
+      for: 2m
+      labels:
+        severity: critical
+        sloth_service: frontend
+        sloth_slo: requests-latency
+        sloth_severity: page
+      annotations:
+        summary: "Frontend latency SLO fast burn (critical page)"
+        description: >
+          The frontend service is burning its latency error budget at >14.4× the allowed rate. More than 14.4% of requests are missing the 500ms target over both the 1h and 5m windows. Current 1h latency-error ratio: {{ $value | humanizePercentage }}.
+        runbook_url: "https://github.com/acme-commerce/platform/blob/main/docs/runbooks/frontend-slo.md"
+
+    - alert: FrontendLatencySLOSlowBurnTicket
+      expr: |
+        (
+          slo:sli_error:ratio_rate6h{sloth_id="frontend-requests-latency"}
+          > (6 * (1 - 0.990))
+        )
+        and
+        (
+          slo:sli_error:ratio_rate30m{sloth_id="frontend-requests-latency"}
+          > (6 * (1 - 0.990))
+        )
+      for: 15m
+      labels:
+        severity: warning
+        sloth_service: frontend
+        sloth_slo: requests-latency
+        sloth_severity: ticket
+      annotations:
+        summary: "Frontend latency SLO slow burn (warning ticket)"
+        description: >
+          The frontend service is slowly burning its latency error budget at >6× the allowed rate over the 6h and 30m windows. Current 6h latency-error ratio: {{ $value | humanizePercentage }}.
+        runbook_url: "https://github.com/acme-commerce/platform/blob/main/docs/runbooks/frontend-slo.md"

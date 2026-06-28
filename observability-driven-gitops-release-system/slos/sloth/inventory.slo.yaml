@@ -1,0 +1,24 @@
+# Sloth SLO: inventory — HTTP availability.
+version: "prometheus/v1"
+service: "inventory"
+labels:
+  owner: platform
+  tier: "2"
+slos:
+- name: "requests-availability"
+  description: "99% of inventory API requests succeed over 30 days."
+  objective: 99.0
+  sli:
+    events:
+      error_query: |
+        sum(rate(http_requests_total{service="inventory",code=~"5.."}[{{.window}}]))
+      total_query: |
+        sum(rate(http_requests_total{service="inventory"}[{{.window}}]))
+  alerting:
+    name: InventoryAvailabilitySLO
+    page_alert:
+      labels:
+        severity: critical
+    ticket_alert:
+      labels:
+        severity: warning

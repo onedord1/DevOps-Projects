@@ -57,6 +57,8 @@ flowchart LR
 | **Progressive delivery** | Argo Rollouts canary steps: **5% → 20% → 50% → 100%** with automated analysis between steps. |
 | **Observability-driven decisions** | Prometheus `AnalysisTemplates` evaluate SLOs at each step and gate promotion. |
 | **Automatic rollback** | Any failing SLO aborts the rollout and restores the last-known-good version. |
+| **SLO-as-code** | Sloth v0.16.0 generates MWMBR burn-rate PrometheusRules from compact SLO declarations; error budgets are tracked as code. |
+| **Incident automation** | Rollout aborts open incidents automatically; completions resolve them; Grafana deploy annotations close the observability timeline. |
 | **DevSecOps supply chain** | Trivy scanning, Syft SBOM generation, Cosign image signing — enforced in CI. |
 | **Full telemetry** | Prometheus (metrics), Loki (logs), OpenTelemetry (traces), Grafana (dashboards), Alertmanager (routing). |
 | **Infrastructure as Code** | Terraform modules for cloud topology; Kind for local development. |
@@ -99,6 +101,7 @@ observability-driven-gitops-release-system/
 ├── gitops/                   # Argo CD app-of-apps + desired state (phase 6)
 ├── rollouts/                 # Argo Rollouts + reusable AnalysisTemplates (phase 7)
 ├── ci/                       # GitLab CI + DevSecOps supply chain (phase 8)
+├── slos/                     # SLO definitions, generated rules, deploy report (phase 9)
 └── demos/                    # (phase 10) demo + fault-injection scenarios
 ```
 
@@ -156,10 +159,11 @@ make down                                  # prompts before destroying
 - **[Phase 6 — GitOps with Argo CD guide](./gitops/README.md)**
 - **[Phase 7 — Progressive delivery guide](./rollouts/README.md)**
 - **[Phase 8 — CI/CD & DevSecOps guide](./ci/README.md)**
+- **[Phase 9 — SLOs, Incidents & Reporting guide](./slos/README.md)**
 
 ## Project status
 
-🟢 **Phase 8 — CI/CD & DevSecOps: complete.** GitLab CI builds (Buildah), scans (Trivy gate), SBOMs (Syft), keyless-signs (Cosign), and bumps the GitOps tag to trigger canaries. See [docs/PHASES.md](./docs/PHASES.md) for what's next.
+🟢 **Phase 9 — SLOs, Incidents & Reporting: complete.** Sloth SLO-as-code generates MWMBR burn-rate PrometheusRules; the incident webhook closes the rollback→incident loop; Argo Rollouts notifications annotate Grafana dashboards on every deploy; deploy-report.sh surfaces a 24h SLI snapshot. See [docs/PHASES.md](./docs/PHASES.md) for what's next.
 
 ## License
 

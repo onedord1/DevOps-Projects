@@ -1,0 +1,46 @@
+# Sloth SLO: payment — HTTP availability + BUSINESS SLO (payment success).
+version: "prometheus/v1"
+service: "payment"
+labels:
+  owner: platform
+  tier: "1"
+slos:
+- name: "requests-availability"
+  description: "99.5% of payment API requests succeed (non-5xx) over 30 days."
+  objective: 99.5
+  sli:
+    events:
+      error_query: |
+        sum(rate(http_requests_total{service="payment",code=~"5.."}[{{.window}}]))
+      total_query: |
+        sum(rate(http_requests_total{service="payment"}[{{.window}}]))
+  alerting:
+    name: PaymentAvailabilitySLO
+    page_alert:
+      labels:
+        severity: critical
+        team: payments
+    ticket_alert:
+      labels:
+        severity: warning
+        team: payments
+
+- name: "payment-success"
+  description: "99% of payment authorizations succeed over a 30-day window."
+  objective: 99.0
+  sli:
+    events:
+      error_query: |
+        sum(rate(payments_total{result!="success"}[{{.window}}]))
+      total_query: |
+        sum(rate(payments_total[{{.window}}]))
+  alerting:
+    name: PaymentSuccessSLO
+    page_alert:
+      labels:
+        severity: critical
+        team: payments
+    ticket_alert:
+      labels:
+        severity: warning
+        team: payments
