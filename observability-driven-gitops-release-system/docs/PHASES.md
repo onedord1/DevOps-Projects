@@ -21,7 +21,7 @@ This platform is built **incrementally**. Each phase is self-contained, validate
 | 5 | Observability Stack | ✅ | Prometheus, Grafana, Loki, Alloy, OTel Collector + Acme SLI rules/dashboards |
 | 6 | GitOps with Argo CD | ✅ | Argo CD app-of-apps managing observability + Acme (Kustomize), sync-wave ordered |
 | 7 | Progressive Delivery | ✅ | Argo Rollouts canary (5→20→50→100%) + 8 reusable AnalysisTemplates, auto promote/rollback |
-| 8 | CI/CD & DevSecOps | ⬜ | GitLab CI, Trivy, Syft (SBOM), Cosign signing |
+| 8 | CI/CD & DevSecOps | ✅ | GitLab CI: Buildah build → Trivy gate → Syft SBOM → Cosign keyless sign → GitOps bump |
 | 9 | SLOs, Incidents & Reporting | ⬜ | Error budgets, incident automation, deploy reports |
 | 10 | Demos, Faults & Hardening | ⬜ | Fault injection, demo scripts, troubleshooting polish |
 
@@ -135,6 +135,18 @@ Argo Rollouts canary strategy (5 → 20 → 50 → 100%), the full reusable `Ana
 ### Phase 8 — CI/CD & DevSecOps ⬜
 
 GitLab CI pipeline: build → Trivy scan → Syft SBOM → Cosign sign → push → GitOps bump. Security gates fail the pipeline on policy violation.
+
+### Phase 8 — CI/CD & DevSecOps ✅
+
+1. **Objective** — Guarantee only scanned, SBOM'd, and signed artifacts reach deployment, with a GitOps handoff that triggers the Phase 7 canaries.
+2. **Architecture** — Matrixed GitLab pipeline (`build → scan → sbom → sign → release`) across all five services: Buildah rootless build (push by digest), Trivy gate, Syft SBOMs, Cosign keyless sign + SBOM attestation (GitLab OIDC + Sigstore), then a manual GitOps tag-bump. See [ci/README.md](../../ci/README.md).
+3. **Design decisions** — [ADR-0012](./adr/0012-devsecops-supply-chain.md): Buildah over Kaniko/dind; keyless Cosign over keyed; sign the digest not the tag; Trivy gates on fixable HIGH/CRITICAL; CI bumps the overlay (no direct cluster access).
+4. **Files** — `ci/.gitlab-ci.yml`, `ci/scripts/verify-signature.sh`, `ci/validate.sh`, `ci/README.md`, Makefile `ci-validate`.
+5. **Implementation** — Pinned tools (Buildah v1.43, Trivy 0.71.2, Syft v1.46.0, Cosign v3.1.1); `id_tokens` keyless signing; GitLab container-scanning + CycloneDX reports; `release` job edits the dev overlay `newTag` and pushes via `GITOPS_PUSH_TOKEN`.
+6. **Validation** — `make lint-scripts` clean; `make ci-validate` confirms the pipeline YAML (stages/jobs) and that the release `sed` bumps all 5 service tags. (Pipeline executes on a GitLab runner, not in-sandbox.)
+7. **Demo** — Set the CI config path + `GITOPS_PUSH_TOKEN`; push/MR runs build→scan→sbom→sign; run `release` to ship; verify with `ci/scripts/verify-signature.sh`.
+8. **Git commits** — `feat(ci): GitLab DevSecOps pipeline — build/scan/sbom/sign/release (phase 8)`.
+9. **README updates** — `ci/README.md` guide; status set to "Phase 8 complete".
 
 ### Phase 9 — SLOs, Incidents & Reporting ⬜
 

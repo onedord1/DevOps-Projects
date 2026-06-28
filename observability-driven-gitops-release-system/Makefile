@@ -151,6 +151,13 @@ rollouts: ## delivery: install Argo Rollouts + Gateway API plugin + RBAC
 rollouts-demo: ## delivery: show the progressive-delivery demo commands
 	@bash "$(REPO_ROOT)/rollouts/demo.sh" help
 
+# =============================================================================
+#  Phase 8 — CI/CD & DevSecOps
+# =============================================================================
+.PHONY: ci-validate
+ci-validate: ## ci: validate the GitLab pipeline YAML + release tag-bump logic
+	@bash "$(REPO_ROOT)/ci/validate.sh"
+
 .PHONY: demo
 demo: ## demo: run guided end-to-end demo (phase 10)
 	@$(call coming_soon,10,Demos and fault injection)
