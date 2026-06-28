@@ -1,0 +1,64 @@
+# OpenTelemetry Collector — the platform's OTLP ingestion gateway. The Acme
+# services (Phase 3) send traces here via OTEL_EXPORTER_OTLP_ENDPOINT. The
+# collector enriches spans with Kubernetes attributes and exports them.
+#
+# By default traces go to the `debug` exporter (visible in collector logs). A
+# real trace store (Grafana Tempo) is a drop-in: uncomment the otlphttp/tempo
+# exporter and add it to the traces pipeline.
+
+fullnameOverride: otel-collector
+
+mode: deployment
+replicaCount: 1
+
+# Adds the k8sattributes processor (+ required RBAC) to every pipeline.
+presets:
+  kubernetesAttributes:
+    enabled: true
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    memory: 256Mi
+
+# Expose the collector's own metrics to Prometheus via a ServiceMonitor.
+serviceMonitor:
+  enabled: true
+
+config:
+  receivers:
+    otlp:
+      protocols:
+        grpc:
+          endpoint: 0.0.0.0:4317
+        http:
+          endpoint: 0.0.0.0:4318
+
+  processors:
+    memory_limiter:
+      check_interval: 5s
+      limit_percentage: 80
+      spike_limit_percentage: 25
+    batch:
+      timeout: 5s
+      send_batch_size: 1024
+
+  exporters:
+    debug:
+      verbosity: basic
+    # --- Production trace store (Grafana Tempo) — drop-in ---------------------
+    # otlphttp/tempo:
+    #   endpoint: http://tempo.monitoring.svc:4318
+
+  service:
+    pipelines:
+      traces:
+        receivers: [ otlp ]
+        processors: [ memory_limiter, batch ]
+        exporters: [ debug ] # add otlphttp/tempo here when Tempo is deployed
+      metrics:
+        receivers: [ otlp ]
+        processors: [ memory_limiter, batch ]
+        exporters: [ debug ]

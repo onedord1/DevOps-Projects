@@ -18,7 +18,7 @@ This platform is built **incrementally**. Each phase is self-contained, validate
 | 2 | Local Kubernetes Platform | ✅ | Reproducible k3s cluster + registry + Gateway API (Envoy Gateway) + bootstrap automation |
 | 3 | Acme Microservices | ✅ | 5 instrumented Go services (RED + business metrics), EdDSA auth, NATS events, distroless images |
 | 4 | Infrastructure as Code (Terraform) | ✅ | Reusable AWS modules (VPC/EKS/ECR) + isolated per-env state (dev/staging/prod) |
-| 5 | Observability Stack | ⬜ | Prometheus, Grafana, Loki, OTel, Alertmanager |
+| 5 | Observability Stack | ✅ | Prometheus, Grafana, Loki, Alloy, OTel Collector + Acme SLI rules/dashboards |
 | 6 | GitOps with Argo CD | ⬜ | App-of-apps, desired-state repo structure |
 | 7 | Progressive Delivery | ⬜ | Argo Rollouts canary + reusable AnalysisTemplates |
 | 8 | CI/CD & DevSecOps | ⬜ | GitLab CI, Trivy, Syft (SBOM), Cosign signing |
@@ -91,6 +91,18 @@ Terraform modules describing the production-equivalent cloud topology (network, 
 ### Phase 5 — Observability Stack ⬜
 
 Prometheus (scrape + recording/alerting rules), Grafana (provisioned dashboards), Loki (logs), OpenTelemetry Collector (traces), Alertmanager (routing + inhibition). Example PromQL library.
+
+### Phase 5 — Observability Stack ✅
+
+1. **Objective** — Stand up the metrics/logs/traces/alerting foundation that the SLO-gated rollouts depend on, with Acme-specific SLIs, dashboards, and alerts.
+2. **Architecture** — Helm-installed into `monitoring`: `kube-prometheus-stack` (Prometheus Operator, Prometheus, Alertmanager, Grafana, node-exporter, kube-state-metrics), Loki (single-binary), Alloy (log DaemonSet), OpenTelemetry Collector (OTLP gateway). Prometheus discovers ServiceMonitors/PrometheusRules cluster-wide; recording rules expose `acme:*` SLIs. See [observability/README.md](../../observability/README.md).
+3. **Design decisions** — [ADR-0009](./adr/0009-observability-stack.md): kube-prometheus-stack for the metrics/alerting/dashboards core; Loki for logs; **Alloy instead of EOL Promtail**; OTel Collector for traces (Tempo as documented drop-in). Pinned chart versions.
+4. **Files** — `observability/charts.env`, `observability/values/*.values.yaml` (4 charts), `observability/prometheus/{servicemonitor-acme.yaml,rules/*}`, `observability/grafana/dashboards/acme-overview.json`, `observability/promql/examples.md`, `observability/{install,uninstall}.sh`, `observability/README.md`, Makefile `observability`/`observability-down`.
+5. **Implementation** — Idempotent install of pinned charts + Acme ServiceMonitor, recording/alerting rules, and an auto-loaded Grafana dashboard; honorLabels preserves the app `service` label.
+6. **Validation** — `make lint-scripts` clean; all values + PrometheusRule/ServiceMonitor YAML parse; dashboard is valid JSON. (`make observability` runs against a live cluster.)
+7. **Demo** — `make observability` → port-forward Grafana → view "Acme Platform — Service Overview"; inspect alerts in Alertmanager.
+8. **Git commits** — `feat(observability): Prometheus/Grafana/Loki/Alloy/OTel stack + Acme SLIs (phase 5)`.
+9. **README updates** — `observability/README.md` guide; status set to "Phase 5 complete".
 
 ### Phase 6 — GitOps with Argo CD ⬜
 

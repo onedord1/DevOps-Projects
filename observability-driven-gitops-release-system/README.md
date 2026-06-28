@@ -95,7 +95,7 @@ observability-driven-gitops-release-system/
 ├── clusters/                 # local k3s platform: bootstrap + config (phase 2)
 ├── apps/                     # Acme microservices (Go) + Dockerfiles (phase 3)
 ├── infra/                    # Terraform: reusable AWS modules + per-env state (phase 4)
-├── observability/            # (phase 5) Prometheus, Grafana, Loki, OTel, Alertmanager
+├── observability/            # Prometheus, Grafana, Loki, Alloy, OTel + SLIs (phase 5)
 ├── gitops/                   # (phase 6) Argo CD apps + desired state
 ├── rollouts/                 # (phase 7) Argo Rollouts + AnalysisTemplates
 ├── ci/                       # (phase 8) GitLab CI + DevSecOps
@@ -152,10 +152,11 @@ make down                                  # prompts before destroying
 - **[Phase 2 — Local platform operator guide](./clusters/README.md)**
 - **[Phase 3 — Acme microservices guide](./apps/README.md)**
 - **[Phase 4 — Infrastructure as Code guide](./infra/README.md)**
+- **[Phase 5 — Observability stack guide](./observability/README.md)**
 
 ## Project status
 
-🟢 **Phase 4 — Infrastructure as Code (Terraform): complete.** Reusable AWS modules (VPC/EKS/ECR) deploy to isolated `dev`/`staging`/`prod` states. See [docs/PHASES.md](./docs/PHASES.md) for what's next.
+🟢 **Phase 5 — Observability Stack: complete.** `make observability` installs Prometheus, Grafana, Loki, Alloy, and the OTel Collector with Acme SLI rules and dashboards. See [docs/PHASES.md](./docs/PHASES.md) for what's next.
 
 ## License
 

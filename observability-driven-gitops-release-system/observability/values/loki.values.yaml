@@ -1,0 +1,71 @@
+# Grafana Loki — single-binary mode with filesystem storage for the local
+# platform. Production should switch to SimpleScalable + object storage (S3/GCS)
+# and enable caches; those toggles are called out below.
+
+fullnameOverride: loki
+
+deploymentMode: SingleBinary
+
+loki:
+  auth_enabled: false
+
+  commonConfig:
+    replication_factor: 1
+
+  # Filesystem storage (local). For production set storage.type=s3 and configure
+  # storage.s3 / bucketNames, then use SimpleScalable mode.
+  storage:
+    type: filesystem
+
+  schemaConfig:
+    configs:
+    - from: "2024-04-01"
+      store: tsdb
+      object_store: filesystem
+      schema: v13
+      index:
+        prefix: loki_index_
+        period: 24h
+
+  limits_config:
+    retention_period: 168h # 7 days
+    ingestion_rate_mb: 8
+    ingestion_burst_size_mb: 16
+
+  # Quieten analytics + ruler on a local install.
+  analytics:
+    reporting_enabled: false
+
+singleBinary:
+  replicas: 1
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      memory: 512Mi
+
+# Disable the scalable-mode components and extras not needed for single-binary.
+read:
+  replicas: 0
+write:
+  replicas: 0
+backend:
+  replicas: 0
+chunksCache:
+  enabled: false
+resultsCache:
+  enabled: false
+gateway:
+  enabled: false
+minio:
+  enabled: false
+lokiCanary:
+  enabled: false
+test:
+  enabled: false
+monitoring:
+  selfMonitoring:
+    enabled: false
+    grafanaAgent:
+      installOperator: false

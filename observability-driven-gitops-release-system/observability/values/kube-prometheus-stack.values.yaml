@@ -1,0 +1,124 @@
+# kube-prometheus-stack values for the Acme platform (local k3s profile).
+#
+# Goals:
+#   - Discover ServiceMonitors/PrometheusRules across ALL namespaces (so the
+#     acme ServiceMonitor + rules in any namespace are picked up).
+#   - Provision Grafana with a Loki datasource and auto-load dashboards from
+#     labelled ConfigMaps (grafana_dashboard=1).
+#   - Keep resource use modest for a laptop; production overrides are noted.
+
+fullnameOverride: kube-prometheus-stack
+
+# -----------------------------------------------------------------------------
+# Prometheus
+# -----------------------------------------------------------------------------
+prometheus:
+  prometheusSpec:
+    retention: 7d
+    scrapeInterval: 30s
+    evaluationInterval: 30s
+
+    # Discover selectors across the whole cluster, not just labelled resources.
+    serviceMonitorSelectorNilUsesHelmValues: false
+    podMonitorSelectorNilUsesHelmValues: false
+    ruleSelectorNilUsesHelmValues: false
+    probeSelectorNilUsesHelmValues: false
+
+    # Local storage. In production use a PVC (storageSpec) backed by a real
+    # StorageClass and longer retention.
+    resources:
+      requests:
+        cpu: 200m
+        memory: 512Mi
+      limits:
+        memory: 1Gi
+
+# -----------------------------------------------------------------------------
+# Alertmanager — routing + inhibition. On rollback (Phase 9) alerts route here.
+# -----------------------------------------------------------------------------
+alertmanager:
+  config:
+    global:
+      resolve_timeout: 5m
+    route:
+      receiver: "platform-default"
+      group_by: [ "alertname", "service", "severity" ]
+      group_wait: 30s
+      group_interval: 5m
+      repeat_interval: 4h
+      routes:
+      - matchers: [ 'severity = "critical"' ]
+        receiver: "platform-critical"
+        continue: true
+      - matchers: [ 'team = "payments"' ]
+        receiver: "payments"
+    receivers:
+    # Webhook receivers are placeholders for the incident automation wired in
+    # Phase 9 (e.g. an incident service / chat). They are valid no-op targets.
+    - name: "platform-default"
+    - name: "platform-critical"
+      webhook_configs:
+      - url: "http://incident-webhook.monitoring.svc:8080/critical"
+        send_resolved: true
+    - name: "payments"
+      webhook_configs:
+      - url: "http://incident-webhook.monitoring.svc:8080/payments"
+        send_resolved: true
+    inhibit_rules:
+    # A critical alert silences warnings for the same service.
+    - source_matchers: [ 'severity = "critical"' ]
+      target_matchers: [ 'severity = "warning"' ]
+      equal: [ "service" ]
+
+# -----------------------------------------------------------------------------
+# Grafana — datasources + dashboard auto-loading.
+# -----------------------------------------------------------------------------
+grafana:
+  adminPassword: "admin" # local only; rotate via secret in real environments
+  defaultDashboardsTimezone: browser
+
+  sidecar:
+    dashboards:
+      enabled: true
+      label: grafana_dashboard
+      searchNamespace: ALL
+      folderAnnotation: grafana_folder
+      provider:
+        foldersFromFilesStructure: true
+    datasources:
+      enabled: true
+      label: grafana_datasource
+      searchNamespace: ALL
+
+  # Loki datasource (Prometheus datasource is configured by the chart).
+  additionalDataSources:
+  - name: Loki
+    type: loki
+    access: proxy
+    url: http://loki.monitoring.svc:3100
+    jsonData:
+      maxLines: 1000
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      memory: 256Mi
+
+# Node exporter + kube-state-metrics stay enabled (cluster-level signals used by
+# the restart-count / CPU / memory AnalysisTemplates in Phase 7).
+nodeExporter:
+  enabled: true
+kubeStateMetrics:
+  enabled: true
+
+# k3s does not expose these control-plane components for scraping.
+kubeControllerManager:
+  enabled: false
+kubeScheduler:
+  enabled: false
+kubeProxy:
+  enabled: false
+kubeEtcd:
+  enabled: false

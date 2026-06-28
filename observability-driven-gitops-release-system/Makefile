@@ -128,8 +128,12 @@ tf-apply: ## infra: terraform apply for an environment (ENV=...); needs creds + 
 	@cd "$(ENV_DIR)" && terraform apply -var-file=$(ENV).tfvars
 
 .PHONY: observability
-observability: ## obs: install Prometheus/Grafana/Loki/OTel stack (phase 5)
-	@$(call coming_soon,5,Observability stack)
+observability: ## obs: install Prometheus/Grafana/Loki/Alloy/OTel into the cluster
+	@bash "$(REPO_ROOT)/observability/install.sh"
+
+.PHONY: observability-down
+observability-down: ## obs: remove the observability stack (CRDs left intact)
+	@bash "$(REPO_ROOT)/observability/uninstall.sh"
 
 .PHONY: gitops
 gitops: ## gitops: install Argo CD + app-of-apps (phase 6)

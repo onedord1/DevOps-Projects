@@ -1,0 +1,78 @@
+# Alerting rules — SLO breaches and availability. These route through
+# Alertmanager (see kube-prometheus-stack values) and, in Phase 9, drive
+# incident creation. Thresholds mirror the canary gates used by Argo Rollouts.
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: acme-slo-alerts
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/part-of: acme-platform
+    release: kube-prometheus-stack
+spec:
+  groups:
+  - name: acme.slo.alerts
+    rules:
+    - alert: AcmeServiceDown
+      expr: up{namespace="acme"} == 0
+      for: 2m
+      labels:
+        severity: critical
+      annotations:
+        summary: "Acme service target is down"
+        description: "{{ $labels.job }} in {{ $labels.namespace }} has been unreachable for 2m."
+
+    - alert: AcmeHighErrorRate
+      expr: acme:request_success_ratio:5m < 0.99
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: "HTTP success rate below 99% for {{ $labels.service }}"
+        description: "5xx errors are eroding the success-rate SLO for {{ $labels.service }}."
+
+    - alert: AcmeHighLatencyP95
+      expr: acme:request_latency_p95:5m > 0.5
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: "P95 latency above 500ms for {{ $labels.service }}"
+        description: "P95 request latency for {{ $labels.service }} exceeds the 500ms SLO."
+
+    - alert: AcmePaymentSuccessLow
+      expr: acme:payment_success_ratio:5m < 0.95
+      for: 5m
+      labels:
+        severity: critical
+        team: payments
+      annotations:
+        summary: "Payment success rate below 95%"
+        description: "The payment-success business SLO is breached; investigate the payment service."
+
+    - alert: AcmeCheckoutSuccessLow
+      expr: acme:checkout_success_ratio:5m < 0.95
+      for: 5m
+      labels:
+        severity: critical
+      annotations:
+        summary: "Checkout success rate below 95%"
+        description: "The checkout-success business SLO is breached; investigate the order pipeline."
+
+    # Fast error-budget burn (multi-window): 2% of requests failing over both
+    # a short and a long window indicates rapid budget consumption.
+    - alert: AcmeErrorBudgetFastBurn
+      expr: |
+        (1 - acme:request_success_ratio:5m) > 0.02
+        and
+        (1 - (
+          sum by (service) (rate(http_requests_total{code=~"5.."}[1h]))
+          /
+          clamp_min(sum by (service) (rate(http_requests_total[1h])), 1e-9)
+        )) > 0.02
+      for: 2m
+      labels:
+        severity: critical
+      annotations:
+        summary: "Fast error-budget burn for {{ $labels.service }}"
+        description: "{{ $labels.service }} is burning its error budget rapidly (>2% over 5m and 1h)."

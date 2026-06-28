@@ -1,0 +1,80 @@
+# Grafana Alloy — node-level log collector (DaemonSet) that tails container logs
+# from /var/log/pods, enriches them with Kubernetes metadata, and writes to Loki.
+# Alloy is the supported successor to Promtail (EOL March 2026).
+
+fullnameOverride: alloy
+
+controller:
+  type: daemonset
+
+rbac:
+  create: true # discovery.kubernetes needs read on pods/nodes/services
+
+alloy:
+  # Mount the host /var/log so loki.source.file can read pod logs.
+  mounts:
+    varlog: true
+
+  resources:
+    requests:
+      cpu: 50m
+      memory: 96Mi
+    limits:
+      memory: 192Mi
+
+  configMap:
+    content: |-
+      // Discover all pods and relabel their metadata into Loki labels.
+      discovery.kubernetes "pods" {
+        role = "pod"
+      }
+
+      discovery.relabel "pod_logs" {
+        targets = discovery.kubernetes.pods.targets
+
+        rule {
+          source_labels = ["__meta_kubernetes_namespace"]
+          target_label  = "namespace"
+        }
+        rule {
+          source_labels = ["__meta_kubernetes_pod_name"]
+          target_label  = "pod"
+        }
+        rule {
+          source_labels = ["__meta_kubernetes_pod_container_name"]
+          target_label  = "container"
+        }
+        rule {
+          source_labels = ["__meta_kubernetes_pod_label_app_kubernetes_io_part_of"]
+          target_label  = "part_of"
+        }
+        // Build the on-disk log path: /var/log/pods/<uid>/<container>/*.log
+        rule {
+          source_labels = ["__meta_kubernetes_pod_uid", "__meta_kubernetes_pod_container_name"]
+          separator     = "/"
+          action        = "replace"
+          replacement   = "/var/log/pods/*$1/*.log"
+          target_label  = "__path__"
+        }
+      }
+
+      local.file_match "pod_logs" {
+        path_targets = discovery.relabel.pod_logs.output
+      }
+
+      loki.source.file "pod_logs" {
+        targets    = local.file_match.pod_logs.targets
+        forward_to = [loki.process.pod_logs.receiver]
+      }
+
+      // Parse the CRI log format used by k3s/containerd.
+      loki.process "pod_logs" {
+        stage.cri {}
+        forward_to = [loki.write.default.receiver]
+      }
+
+      loki.write "default" {
+        endpoint {
+          url = "http://loki.monitoring.svc:3100/loki/api/v1/push"
+        }
+      }
