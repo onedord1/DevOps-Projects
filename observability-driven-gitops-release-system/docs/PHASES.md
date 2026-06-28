@@ -20,7 +20,7 @@ This platform is built **incrementally**. Each phase is self-contained, validate
 | 4 | Infrastructure as Code (Terraform) | ✅ | Reusable AWS modules (VPC/EKS/ECR) + isolated per-env state (dev/staging/prod) |
 | 5 | Observability Stack | ✅ | Prometheus, Grafana, Loki, Alloy, OTel Collector + Acme SLI rules/dashboards |
 | 6 | GitOps with Argo CD | ✅ | Argo CD app-of-apps managing observability + Acme (Kustomize), sync-wave ordered |
-| 7 | Progressive Delivery | ⬜ | Argo Rollouts canary + reusable AnalysisTemplates |
+| 7 | Progressive Delivery | ✅ | Argo Rollouts canary (5→20→50→100%) + 8 reusable AnalysisTemplates, auto promote/rollback |
 | 8 | CI/CD & DevSecOps | ⬜ | GitLab CI, Trivy, Syft (SBOM), Cosign signing |
 | 9 | SLOs, Incidents & Reporting | ⬜ | Error budgets, incident automation, deploy reports |
 | 10 | Demos, Faults & Hardening | ⬜ | Fault injection, demo scripts, troubleshooting polish |
@@ -119,6 +119,18 @@ Prometheus (scrape + recording/alerting rules), Grafana (provisioned dashboards)
 ### Phase 7 — Progressive Delivery ⬜
 
 Argo Rollouts canary strategy (5 → 20 → 50 → 100%), the full reusable `AnalysisTemplate` set (HTTP success, 5xx, P95 latency, restarts, CPU, memory, payment success, checkout success), and automatic abort/rollback wiring.
+
+### Phase 7 — Progressive Delivery ✅
+
+1. **Objective** — Close the auto-promote/auto-rollback loop: canary Rollouts gated by Prometheus SLO analysis scoped to the canary pods.
+2. **Architecture** — Argo Rollouts (chart 2.41.0, app v1.9.0) + Gateway API traffic-router plugin (v0.15.0). `frontend` canaries via HTTPRoute weights; `payment`/`order`/`inventory` via replica-based canary; `notification` stays a Deployment. 8 reusable AnalysisTemplates query the Phase 5 Prometheus, filtered by `rollouts_pod_template_hash`. See [rollouts/README.md](../../rollouts/README.md).
+3. **Design decisions** — [ADR-0011](./adr/0011-progressive-delivery-analysis.md): 5→20→50→100% steps with inter-step analysis; canary isolation via `podTargetLabels`; parameterized templates with per-service SLO composition; no-data-safe success conditions.
+4. **Files** — `rollouts/values/argo-rollouts.values.yaml`, `rollouts/rbac/gateway-plugin-rbac.yaml`, `rollouts/{install,demo}.sh`, `rollouts/README.md`, `gitops/acme/base/analysis/*` (8 templates), Rollout conversions of frontend/payment/order/inventory, `gitops/apps/{05-argo-rollouts,06-rollouts-rbac}.app.yaml`, ServiceMonitor `podTargetLabels`, Makefile `rollouts`/`rollouts-demo`.
+5. **Implementation** — Rollouts replace Deployments; frontend gets stable/canary Services + weighted HTTPRoute; analysis composed per service (RED + business SLOs + resource guardrails); GitOps-managed (sync-waves -25/-24 before workloads).
+6. **Validation** — `make lint-scripts` clean; all YAML parse; `kubectl kustomize` builds 4 Rollouts + 8 AnalysisTemplates + canary/stable Services + weighted HTTPRoute, with `part-of` label applied and Pod selectors untouched.
+7. **Demo** — `rollouts/demo.sh load` → `promote frontend v2` (healthy canary) → `bad-payment` (SLO breach → automatic rollback).
+8. **Git commits** — `feat(rollouts): Argo Rollouts canary + reusable AnalysisTemplates (phase 7)`.
+9. **README updates** — `rollouts/README.md` guide; status set to "Phase 7 complete".
 
 ### Phase 8 — CI/CD & DevSecOps ⬜
 

@@ -1,0 +1,28 @@
+# Reusable AnalysisTemplate: CPU utilization (cores) for the service's
+# containers. Guardrail against a release that regresses CPU badly.
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: cpu-utilization
+spec:
+  args:
+  - name: container-name
+  - name: namespace
+    value: acme
+  - name: cpu-threshold-cores
+    value: "0.5"
+  - name: prometheus-address
+    value: http://kube-prometheus-stack-prometheus.monitoring.svc:9090
+  metrics:
+  - name: cpu-utilization
+    interval: 30s
+    count: 3
+    successCondition: "len(result) == 0 || result[0] <= {{args.cpu-threshold-cores}}"
+    failureLimit: 2
+    provider:
+      prometheus:
+        address: "{{args.prometheus-address}}"
+        query: |
+          max(sum by (pod) (rate(container_cpu_usage_seconds_total{
+            namespace="{{args.namespace}}",
+            container="{{args.container-name}}"}[2m])))

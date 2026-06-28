@@ -1,0 +1,28 @@
+# Reusable AnalysisTemplate: memory working set (bytes) for the service's
+# containers. Guardrail against a release with a memory regression / leak.
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: memory-utilization
+spec:
+  args:
+  - name: container-name
+  - name: namespace
+    value: acme
+  - name: memory-threshold-bytes
+    value: "134217728" # 128Mi
+  - name: prometheus-address
+    value: http://kube-prometheus-stack-prometheus.monitoring.svc:9090
+  metrics:
+  - name: memory-utilization
+    interval: 30s
+    count: 3
+    successCondition: "len(result) == 0 || result[0] <= {{args.memory-threshold-bytes}}"
+    failureLimit: 2
+    provider:
+      prometheus:
+        address: "{{args.prometheus-address}}"
+        query: |
+          max(sum by (pod) (container_memory_working_set_bytes{
+            namespace="{{args.namespace}}",
+            container="{{args.container-name}}"}))

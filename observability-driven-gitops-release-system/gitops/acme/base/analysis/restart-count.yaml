@@ -1,0 +1,29 @@
+# Reusable AnalysisTemplate: container restart count (crash-loop guardrail).
+# Fails if a container in the service restarts more than the threshold during
+# the analysis window. Uses kube-state-metrics (per-container label).
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: restart-count
+spec:
+  args:
+  - name: container-name
+  - name: namespace
+    value: acme
+  - name: restart-threshold
+    value: "0"
+  - name: prometheus-address
+    value: http://kube-prometheus-stack-prometheus.monitoring.svc:9090
+  metrics:
+  - name: restart-count
+    interval: 30s
+    count: 3
+    successCondition: "len(result) == 0 || result[0] <= {{args.restart-threshold}}"
+    failureLimit: 1
+    provider:
+      prometheus:
+        address: "{{args.prometheus-address}}"
+        query: |
+          sum(increase(kube_pod_container_status_restarts_total{
+            namespace="{{args.namespace}}",
+            container="{{args.container-name}}"}[3m]))

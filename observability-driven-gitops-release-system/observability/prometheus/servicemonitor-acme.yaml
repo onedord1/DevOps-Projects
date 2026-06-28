@@ -26,3 +26,7 @@ spec:
     interval: 30s
     scrapeTimeout: 10s
     honorLabels: true
+  # Copy the Rollouts canary pod-hash into a metric label so AnalysisTemplates
+  # (Phase 7) can compare canary vs stable: rollouts_pod_template_hash.
+  podTargetLabels:
+  - rollouts-pod-template-hash

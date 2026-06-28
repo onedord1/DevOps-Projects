@@ -1,0 +1,29 @@
+# Reusable AnalysisTemplate: checkout (order) success rate (business SLO) for
+# the CANARY order pods. Attached to the order Rollout.
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: checkout-success
+spec:
+  args:
+  - name: canary-hash
+  - name: checkout-success-threshold
+    value: "0.95"
+  - name: prometheus-address
+    value: http://kube-prometheus-stack-prometheus.monitoring.svc:9090
+  metrics:
+  - name: checkout-success
+    interval: 30s
+    count: 3
+    successCondition: "len(result) == 0 || result[0] >= {{args.checkout-success-threshold}}"
+    failureLimit: 1
+    provider:
+      prometheus:
+        address: "{{args.prometheus-address}}"
+        query: |
+          sum(rate(orders_total{
+            result="success",
+            rollouts_pod_template_hash="{{args.canary-hash}}"}[2m]))
+          /
+          clamp_min(sum(rate(orders_total{
+            rollouts_pod_template_hash="{{args.canary-hash}}"}[2m])), 1e-9)

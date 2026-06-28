@@ -1,0 +1,27 @@
+# Gateway API plugin RBAC (sync-wave -24): grants the Argo Rollouts controller
+# permission to read/update HTTPRoutes. Applied after the controller install.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: rollouts-rbac
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "-24"
+  finalizers:
+  - resources-finalizer.argocd.argoproj.io
+spec:
+  project: platform
+  source:
+    repoURL: https://github.com/onedord1/DevOps-Projects.git
+    targetRevision: HEAD
+    path: observability-driven-gitops-release-system/rollouts/rbac
+    directory:
+      recurse: true
+      include: "*.yaml"
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argo-rollouts
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true

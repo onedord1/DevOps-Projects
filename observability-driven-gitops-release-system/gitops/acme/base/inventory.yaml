@@ -1,14 +1,45 @@
-apiVersion: apps/v1
-kind: Deployment
+# inventory — canary Rollout (replica-based). Analysis covers RED SLIs plus the
+# restart/CPU/memory resource guardrails.
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
 metadata:
   name: inventory
   labels:
     app.kubernetes.io/name: inventory
 spec:
-  replicas: 2
+  replicas: 3
+  revisionHistoryLimit: 3
   selector:
     matchLabels:
       app.kubernetes.io/name: inventory
+  strategy:
+    canary:
+      steps:
+      - setWeight: 5
+      - pause: { duration: 30s }
+      - analysis: &inventory-analysis
+          templates:
+          - templateName: http-success-rate
+          - templateName: http-5xx-rate
+          - templateName: p95-latency
+          - templateName: restart-count
+          - templateName: cpu-utilization
+          - templateName: memory-utilization
+          args:
+          - name: service-name
+            value: inventory
+          - name: container-name
+            value: inventory
+          - name: canary-hash
+            valueFrom:
+              podTemplateHashValue: Latest
+      - setWeight: 20
+      - pause: { duration: 30s }
+      - analysis: *inventory-analysis
+      - setWeight: 50
+      - pause: { duration: 30s }
+      - analysis: *inventory-analysis
+      - setWeight: 100
   template:
     metadata:
       labels:

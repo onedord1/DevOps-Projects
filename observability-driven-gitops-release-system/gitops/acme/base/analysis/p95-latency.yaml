@@ -1,0 +1,28 @@
+# Reusable AnalysisTemplate: P95 request latency (seconds) of the CANARY pods.
+# Fails the canary if P95 exceeds the threshold.
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: p95-latency
+spec:
+  args:
+  - name: service-name
+  - name: canary-hash
+  - name: latency-threshold-seconds
+    value: "0.5"
+  - name: prometheus-address
+    value: http://kube-prometheus-stack-prometheus.monitoring.svc:9090
+  metrics:
+  - name: p95-latency
+    interval: 30s
+    count: 3
+    successCondition: "len(result) == 0 || result[0] <= {{args.latency-threshold-seconds}}"
+    failureLimit: 1
+    provider:
+      prometheus:
+        address: "{{args.prometheus-address}}"
+        query: |
+          histogram_quantile(0.95,
+            sum by (le) (rate(http_request_duration_seconds_bucket{
+              service="{{args.service-name}}",
+              rollouts_pod_template_hash="{{args.canary-hash}}"}[2m])))

@@ -31,5 +31,6 @@ Each ADR follows the lightweight [Michael Nygard format](https://cognitect.com/b
 | [0008](./0008-terraform-structure.md) | Terraform repository structure (modules + environments) | Accepted |
 | [0009](./0009-observability-stack.md) | Observability stack (Prometheus, Grafana, Loki, Alloy, OTel) | Accepted |
 | [0010](./0010-gitops-argocd.md) | GitOps with Argo CD (app-of-apps + sync waves) | Accepted |
+| [0011](./0011-progressive-delivery-analysis.md) | Progressive delivery — canary strategy & analysis design | Accepted |
 
 ¹ ADR-0004's ingress-nginx decision is superseded by ADR-0005; its k3s/registry/kubeconfig decisions still stand.

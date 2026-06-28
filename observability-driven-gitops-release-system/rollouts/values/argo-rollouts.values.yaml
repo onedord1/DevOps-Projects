@@ -1,0 +1,32 @@
+# Argo Rollouts (chart 2.41.0, app v1.9.0) values.
+#
+# Registers the Gateway API traffic-router plugin (v0.15.0) so Rollouts can do
+# weighted canaries by editing HTTPRoute backend weights (ADR-0002/0005). The
+# controller downloads the plugin binary from the pinned release URL at startup.
+#
+# NOTE: the location is the linux-amd64 build. For arm64 nodes change the suffix
+# to gatewayapi-plugin-linux-arm64.
+
+controller:
+  replicas: 1
+
+  trafficRouterPlugins:
+  - name: "argoproj-labs/gatewayAPI"
+    location: "https://github.com/argoproj-labs/rollouts-plugin-trafficrouter-gatewayapi/releases/download/v0.15.0/gatewayapi-plugin-linux-amd64"
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      memory: 256Mi
+
+# The Argo Rollouts Kubernetes dashboard (optional, handy locally).
+dashboard:
+  enabled: true
+  resources:
+    requests:
+      cpu: 25m
+      memory: 64Mi
+    limits:
+      memory: 128Mi

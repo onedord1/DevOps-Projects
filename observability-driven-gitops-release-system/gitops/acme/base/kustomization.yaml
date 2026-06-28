@@ -11,6 +11,14 @@ resources:
 - order.yaml
 - inventory.yaml
 - notification.yaml
+- analysis/http-success-rate.yaml
+- analysis/http-5xx-rate.yaml
+- analysis/p95-latency.yaml
+- analysis/restart-count.yaml
+- analysis/cpu-utilization.yaml
+- analysis/memory-utilization.yaml
+- analysis/payment-success.yaml
+- analysis/checkout-success.yaml
 
 # Common labels on every resource's metadata. includeSelectors=false keeps Pod
 # selectors stable (so the part-of label can change without breaking matches),

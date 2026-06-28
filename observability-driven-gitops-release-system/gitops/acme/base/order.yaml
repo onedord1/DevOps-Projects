@@ -1,14 +1,43 @@
-apiVersion: apps/v1
-kind: Deployment
+# order — canary Rollout (replica-based). Analysis includes the checkout-success
+# business SLO; a release that breaks checkout aborts automatically.
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
 metadata:
   name: order
   labels:
     app.kubernetes.io/name: order
 spec:
-  replicas: 2
+  replicas: 3
+  revisionHistoryLimit: 3
   selector:
     matchLabels:
       app.kubernetes.io/name: order
+  strategy:
+    canary:
+      steps:
+      - setWeight: 5
+      - pause: { duration: 30s }
+      - analysis: &order-analysis
+          templates:
+          - templateName: http-success-rate
+          - templateName: p95-latency
+          - templateName: checkout-success
+          - templateName: restart-count
+          args:
+          - name: service-name
+            value: order
+          - name: container-name
+            value: order
+          - name: canary-hash
+            valueFrom:
+              podTemplateHashValue: Latest
+      - setWeight: 20
+      - pause: { duration: 30s }
+      - analysis: *order-analysis
+      - setWeight: 50
+      - pause: { duration: 30s }
+      - analysis: *order-analysis
+      - setWeight: 100
   template:
     metadata:
       labels:

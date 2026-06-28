@@ -1,15 +1,49 @@
-apiVersion: apps/v1
-kind: Deployment
+# frontend — canary Rollout with Gateway API traffic routing. Argo Rollouts
+# shifts weight on the `frontend` HTTPRoute (stable vs canary backends) via the
+# gatewayAPI plugin, running SLO analysis between steps (5 → 20 → 50 → 100%).
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
 metadata:
   name: frontend
   labels:
     app.kubernetes.io/name: frontend
     app.kubernetes.io/component: bff
 spec:
-  replicas: 2
+  replicas: 3
+  revisionHistoryLimit: 3
   selector:
     matchLabels:
       app.kubernetes.io/name: frontend
+  strategy:
+    canary:
+      canaryService: frontend-canary
+      stableService: frontend-stable
+      trafficRouting:
+        plugins:
+          argoproj-labs/gatewayAPI:
+            httpRoute: frontend
+            namespace: acme
+      steps:
+      - setWeight: 5
+      - pause: { duration: 30s }
+      - analysis: &frontend-analysis
+          templates:
+          - templateName: http-success-rate
+          - templateName: http-5xx-rate
+          - templateName: p95-latency
+          args:
+          - name: service-name
+            value: frontend
+          - name: canary-hash
+            valueFrom:
+              podTemplateHashValue: Latest
+      - setWeight: 20
+      - pause: { duration: 30s }
+      - analysis: *frontend-analysis
+      - setWeight: 50
+      - pause: { duration: 30s }
+      - analysis: *frontend-analysis
+      - setWeight: 100
   template:
     metadata:
       labels:
@@ -55,10 +89,12 @@ spec:
           capabilities:
             drop: [ "ALL" ]
 ---
+# Stable + canary Services. Argo Rollouts manages their selectors (adds the
+# rollouts-pod-template-hash) so the HTTPRoute can split traffic between them.
 apiVersion: v1
 kind: Service
 metadata:
-  name: frontend
+  name: frontend-stable
   labels:
     app.kubernetes.io/name: frontend
 spec:
@@ -69,8 +105,22 @@ spec:
     port: 8080
     targetPort: http
 ---
-# Expose the storefront through the shared Gateway (Phase 2). In Phase 7 Argo
-# Rollouts manages this route's backend weights during canary steps.
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend-canary
+  labels:
+    app.kubernetes.io/name: frontend
+spec:
+  selector:
+    app.kubernetes.io/name: frontend
+  ports:
+  - name: http
+    port: 8080
+    targetPort: http
+---
+# Storefront route on the shared Gateway. The plugin rewrites these two backend
+# weights during a canary; they start 100/0 (all stable).
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
@@ -84,5 +134,9 @@ spec:
         type: PathPrefix
         value: /
     backendRefs:
-    - name: frontend
+    - name: frontend-stable
       port: 8080
+      weight: 100
+    - name: frontend-canary
+      port: 8080
+      weight: 0

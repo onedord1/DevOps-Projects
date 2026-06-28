@@ -144,8 +144,12 @@ gitops-down: ## gitops: remove Argo CD and all GitOps-managed apps
 	@bash "$(REPO_ROOT)/gitops/uninstall.sh"
 
 .PHONY: rollouts
-rollouts: ## delivery: install Argo Rollouts + AnalysisTemplates (phase 7)
-	@$(call coming_soon,7,Progressive delivery)
+rollouts: ## delivery: install Argo Rollouts + Gateway API plugin + RBAC
+	@bash "$(REPO_ROOT)/rollouts/install.sh"
+
+.PHONY: rollouts-demo
+rollouts-demo: ## delivery: show the progressive-delivery demo commands
+	@bash "$(REPO_ROOT)/rollouts/demo.sh" help
 
 .PHONY: demo
 demo: ## demo: run guided end-to-end demo (phase 10)

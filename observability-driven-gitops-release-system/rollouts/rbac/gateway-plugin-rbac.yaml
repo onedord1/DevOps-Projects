@@ -1,0 +1,30 @@
+# RBAC for the Argo Rollouts Gateway API plugin. The controller must read and
+# update HTTPRoutes to shift canary traffic weights. The default Argo Rollouts
+# ClusterRole does not include the gateway.networking.k8s.io group, so we grant
+# it here and bind it to the controller's ServiceAccount.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: argo-rollouts-gateway-plugin
+  labels:
+    app.kubernetes.io/part-of: argo-rollouts
+rules:
+- apiGroups: [ "gateway.networking.k8s.io" ]
+  resources:
+  - httproutes
+  verbs: [ "get", "list", "watch", "update", "patch" ]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: argo-rollouts-gateway-plugin
+  labels:
+    app.kubernetes.io/part-of: argo-rollouts
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: argo-rollouts-gateway-plugin
+subjects:
+- kind: ServiceAccount
+  name: argo-rollouts
+  namespace: argo-rollouts

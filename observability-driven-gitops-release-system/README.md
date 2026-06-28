@@ -97,7 +97,7 @@ observability-driven-gitops-release-system/
 ├── infra/                    # Terraform: reusable AWS modules + per-env state (phase 4)
 ├── observability/            # Prometheus, Grafana, Loki, Alloy, OTel + SLIs (phase 5)
 ├── gitops/                   # Argo CD app-of-apps + desired state (phase 6)
-├── rollouts/                 # (phase 7) Argo Rollouts + AnalysisTemplates
+├── rollouts/                 # Argo Rollouts + reusable AnalysisTemplates (phase 7)
 ├── ci/                       # (phase 8) GitLab CI + DevSecOps
 └── demos/                    # (phase 10) demo + fault-injection scenarios
 ```
@@ -154,10 +154,11 @@ make down                                  # prompts before destroying
 - **[Phase 4 — Infrastructure as Code guide](./infra/README.md)**
 - **[Phase 5 — Observability stack guide](./observability/README.md)**
 - **[Phase 6 — GitOps with Argo CD guide](./gitops/README.md)**
+- **[Phase 7 — Progressive delivery guide](./rollouts/README.md)**
 
 ## Project status
 
-🟢 **Phase 6 — GitOps with Argo CD: complete.** `make gitops` brings the observability stack and Acme workloads under Argo CD (app-of-apps, sync-wave ordered). See [docs/PHASES.md](./docs/PHASES.md) for what's next.
+🟢 **Phase 7 — Progressive Delivery: complete.** Argo Rollouts canaries (5→20→50→100%) gated by 8 reusable Prometheus AnalysisTemplates auto-promote or auto-rollback. See [docs/PHASES.md](./docs/PHASES.md) for what's next.
 
 ## License
 

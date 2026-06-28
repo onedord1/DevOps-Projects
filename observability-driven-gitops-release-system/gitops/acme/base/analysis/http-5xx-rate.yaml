@@ -1,0 +1,32 @@
+# Reusable AnalysisTemplate: HTTP 5xx error ratio of the CANARY pods.
+# Fails the canary if the 5xx ratio exceeds the threshold.
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: http-5xx-rate
+spec:
+  args:
+  - name: service-name
+  - name: canary-hash
+  - name: error-rate-threshold
+    value: "0.05"
+  - name: prometheus-address
+    value: http://kube-prometheus-stack-prometheus.monitoring.svc:9090
+  metrics:
+  - name: http-5xx-rate
+    interval: 30s
+    count: 3
+    successCondition: "len(result) == 0 || result[0] <= {{args.error-rate-threshold}}"
+    failureLimit: 1
+    provider:
+      prometheus:
+        address: "{{args.prometheus-address}}"
+        query: |
+          sum(rate(http_requests_total{
+            service="{{args.service-name}}",
+            rollouts_pod_template_hash="{{args.canary-hash}}",
+            code=~"5.."}[2m]))
+          /
+          clamp_min(sum(rate(http_requests_total{
+            service="{{args.service-name}}",
+            rollouts_pod_template_hash="{{args.canary-hash}}"}[2m])), 1e-9)
